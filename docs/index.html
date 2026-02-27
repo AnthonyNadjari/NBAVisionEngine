@@ -86,7 +86,6 @@
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
       </div>
       <p id="statusError" class="error-msg" style="display: none;"></p>
-      <p id="tokenHint" class="help-text" style="display: none;"></p>
     </section>
 
     <section class="card">
@@ -147,7 +146,6 @@
       var triggerSuccess = document.getElementById('triggerSuccess');
       var cookiesToggle = document.getElementById('cookiesToggle');
       var cookiesSection = document.getElementById('cookiesSection');
-      var tokenHint = document.getElementById('tokenHint');
 
       function setStatus(status, text, detailsHtml) {
         if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
@@ -242,10 +240,7 @@
       });
 
       (function init() {
-        if (!getToken()) {
-          if (tokenHint) { tokenHint.textContent = 'Visit this page once with the token in the URL: ' + window.location.href.split('#')[0] + '#ghp_YOUR_TOKEN'; tokenHint.style.display = 'block'; }
-          if (triggerBtn) triggerBtn.disabled = true;
-        }
+        if (!getToken() && triggerBtn) triggerBtn.disabled = true;
         fetchStatus();
       })();
     })();
