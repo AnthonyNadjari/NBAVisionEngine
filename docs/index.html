@@ -187,8 +187,39 @@
       gap: 0.75rem;
       margin-top: 0.75rem;
       flex-wrap: wrap;
+      align-items: center;
     }
     .token-row .btn { flex: 0 0 auto; }
+    .token-row input {
+      flex: 1;
+      min-width: 180px;
+      padding: 0.5rem 0.75rem;
+      background: rgba(10, 10, 15, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .token-row input::placeholder { color: var(--text-muted); }
+    .token-row input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .connected-badge {
+      font-size: 0.75rem;
+      color: var(--success);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .connected-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
 
     .help-text {
       font-size: 0.85rem;
@@ -269,21 +300,38 @@
       <div id="runDetails" class="run-details" style="display: none;"></div>
       <div class="token-row">
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
-        <a class="btn btn-secondary" id="actionsBtn" target="_blank" rel="noopener" href="https://github.com/AnthonyNadjari/NBAVisionEngine/actions">Open Actions</a>
       </div>
       <p class="help-text">
-        Status is fetched from the public GitHub API. If you hit rate limits, wait a bit and refresh.
+        Add a GitHub token in Settings to trigger runs and get live updates without leaving this page.
       </p>
       <p id="statusError" class="error-msg" style="display: none;"></p>
     </section>
 
     <section class="card">
-      <h2 class="card-title">Orchestrate</h2>
-      <p class="help-text" style="margin-top: 0.75rem;">
-        To start a run: open the
-        <a href="https://github.com/AnthonyNadjari/NBAVisionEngine/actions" id="actionsLink" target="_blank" rel="noopener">Actions tab</a>,
-        select <strong>NBAVision Engine</strong>, then click <strong>Run workflow</strong>.
+      <h2 class="card-title">Trigger run</h2>
+      <div class="token-row">
+        <button type="button" class="btn btn-primary" id="triggerBtn" disabled>Start engine run</button>
+      </div>
+      <p class="help-text" id="triggerHelp">
+        Connect a GitHub token in Settings to start a run from here. Run can take up to 6 hours; status updates above.
       </p>
+      <p id="triggerError" class="error-msg" style="display: none;"></p>
+      <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
+    </section>
+
+    <section class="card">
+      <button type="button" class="section-toggle" id="settingsToggle" aria-expanded="false">Settings — GitHub token</button>
+      <div id="settingsSection" class="section-content">
+        <p class="help-text" style="margin-bottom: 0.75rem;">
+          One-time: paste a <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=NBAVision+control" target="_blank" rel="noopener">Personal Access Token</a> (repo scope). Stored only in this browser session so you can trigger runs and see status without opening GitHub.
+        </p>
+        <div class="token-row">
+          <input type="password" id="tokenInput" placeholder="ghp_..." autocomplete="off" />
+          <button type="button" class="btn btn-primary" id="saveTokenBtn">Save</button>
+          <button type="button" class="btn btn-secondary" id="clearTokenBtn">Clear</button>
+        </div>
+        <p id="settingsStatus" class="help-text" style="margin-top: 0.5rem;"></p>
+      </div>
     </section>
 
     <section class="card">
@@ -305,6 +353,9 @@
 
   <script>
     (function() {
+      const WORKFLOW_FILE = 'nbavision.yml';
+      const STORAGE_KEY = 'nbavision_gh_token';
+
       const repo = detectRepo();
       function detectRepo() {
         const host = window.location.hostname || '';
@@ -322,28 +373,111 @@
         return `https://api.github.com/repos/${repo.owner}/${repo.repo}${path}`;
       }
 
+      function getToken() {
+        return sessionStorage.getItem(STORAGE_KEY) || '';
+      }
+      function setToken(t) {
+        if (t) sessionStorage.setItem(STORAGE_KEY, t);
+        else sessionStorage.removeItem(STORAGE_KEY);
+        tokenInput.value = t ? '••••••••' : '';
+        updateUI();
+      }
+
       const statusBadge = document.getElementById('statusBadge');
       const statusText = document.getElementById('statusText');
       const runDetails = document.getElementById('runDetails');
       const statusError = document.getElementById('statusError');
       const refreshBtn = document.getElementById('refreshBtn');
+      const triggerBtn = document.getElementById('triggerBtn');
+      const triggerHelp = document.getElementById('triggerHelp');
+      const triggerError = document.getElementById('triggerError');
+      const triggerSuccess = document.getElementById('triggerSuccess');
+      const tokenInput = document.getElementById('tokenInput');
+      const saveTokenBtn = document.getElementById('saveTokenBtn');
+      const clearTokenBtn = document.getElementById('clearTokenBtn');
+      const settingsStatus = document.getElementById('settingsStatus');
+      const settingsToggle = document.getElementById('settingsToggle');
+      const settingsSection = document.getElementById('settingsSection');
       const actionsLink = document.getElementById('actionsLink');
       const actionsBtn = document.getElementById('actionsBtn');
       const cookiesToggle = document.getElementById('cookiesToggle');
       const cookiesSection = document.getElementById('cookiesSection');
 
+      function updateUI() {
+        var hasToken = !!getToken();
+        if (triggerBtn) triggerBtn.disabled = !hasToken;
+        if (settingsStatus) {
+          settingsStatus.innerHTML = hasToken ? '<span class="connected-badge">Connected</span> Token stored for this session.' : '';
+        }
+      }
+
       actionsLink.href = `https://github.com/${repo.owner}/${repo.repo}/actions`;
-      actionsBtn.href = actionsLink.href;
+      if (actionsBtn) actionsBtn.href = actionsLink.href;
+
+      settingsToggle.addEventListener('click', function() {
+        var open = settingsSection.classList.toggle('open');
+        settingsToggle.classList.toggle('open', open);
+        settingsToggle.setAttribute('aria-expanded', open);
+      });
 
       cookiesToggle.addEventListener('click', function() {
-        const open = cookiesSection.classList.toggle('open');
+        var open = cookiesSection.classList.toggle('open');
         cookiesToggle.classList.toggle('open', open);
         cookiesToggle.setAttribute('aria-expanded', open);
+      });
+
+      saveTokenBtn.addEventListener('click', function() {
+        var t = tokenInput.value.trim();
+        if (t && t !== '••••••••') {
+          setToken(t);
+          settingsStatus.innerHTML = '<span class="connected-badge">Saved</span> You can trigger runs and see live status.';
+          statusError.style.display = 'none';
+          fetchStatus();
+        }
+      });
+
+      clearTokenBtn.addEventListener('click', function() {
+        setToken('');
+        settingsStatus.textContent = 'Token cleared.';
+        setStatus('idle', 'Add a token in Settings to see status and trigger runs.');
+        runDetails.style.display = 'none';
       });
 
       refreshBtn.addEventListener('click', function() {
         statusError.style.display = 'none';
         fetchStatus();
+      });
+
+      triggerBtn.addEventListener('click', function() {
+        triggerError.style.display = 'none';
+        triggerSuccess.style.display = 'none';
+        var token = getToken();
+        if (!token) return;
+        triggerBtn.disabled = true;
+        fetch(apiUrl('/actions/workflows/' + WORKFLOW_FILE + '/dispatches'), {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ref: 'main' })
+        })
+          .then(function(res) {
+            if (res.status === 204) {
+              triggerSuccess.textContent = 'Run started. Status will update above.';
+              triggerSuccess.style.display = 'block';
+              setTimeout(fetchStatus, 2000);
+              pollUntilDone();
+            } else {
+              return res.json().then(function(j) { throw new Error(j.message || 'Trigger failed'); });
+            }
+          })
+          .catch(function(err) {
+            triggerError.textContent = err.message || 'Trigger failed.';
+            triggerError.style.display = 'block';
+          })
+          .finally(function() { triggerBtn.disabled = !getToken(); });
       });
 
       function setStatus(status, text, detailsHtml) {
@@ -358,15 +492,20 @@
         }
       }
 
+      function authHeaders() {
+        var h = { 'Accept': 'application/vnd.github.v3+json' };
+        var t = getToken();
+        if (t) h['Authorization'] = 'Bearer ' + t;
+        return h;
+      }
+
       function fetchStatus() {
         statusText.textContent = 'Loading…';
         statusError.style.display = 'none';
-        fetch(apiUrl('/actions/runs?per_page=5'), {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        })
+        fetch(apiUrl('/actions/runs?per_page=5'), { headers: authHeaders() })
           .then(function(res) {
             if (!res.ok) {
-              if (res.status === 403) throw new Error('Rate limited by GitHub API (403). Try again later.');
+              if (res.status === 403) throw new Error('Rate limited (403). Add a token in Settings or try later.');
               throw new Error('Could not fetch runs (' + res.status + ')');
             }
             return res.json();
@@ -382,9 +521,10 @@
             const conclusion = nbavision.conclusion;
             const created = nbavision.created_at ? new Date(nbavision.created_at).toLocaleString() : '';
             const url = nbavision.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
-            let displayStatus = status;
-            if (conclusion) displayStatus = conclusion;
-            setStatus(displayStatus, 'Last run: ' + created, '<a href="' + url + '" target="_blank" rel="noopener">View run →</a>');
+            var displayStatus = conclusion || status;
+            var msg = 'Last run: ' + created;
+            if (status === 'in_progress') msg += ' — running…';
+            setStatus(displayStatus, msg, '<a href="' + url + '" target="_blank" rel="noopener">View run on GitHub →</a>');
             if (status === 'queued' || status === 'in_progress') pollUntilDone();
           })
           .catch(function(err) {
@@ -400,9 +540,13 @@
         pollTimer = setTimeout(function() {
           fetchStatus();
           pollTimer = null;
-        }, 12000);
+        }, 10000);
       }
 
+      if (getToken()) {
+        tokenInput.value = '••••••••';
+      }
+      updateUI();
       fetchStatus();
     })();
   </script>
