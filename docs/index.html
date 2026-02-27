@@ -289,6 +289,9 @@
       <p class="help-text" id="triggerHelp">
         Save a token in Settings to start a run. Run can take up to 6 hours; status updates above.
       </p>
+      <p class="help-text" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
+        <strong>What happens?</strong> This starts the NBAVision workflow on GitHub Actions: the bot scrapes NBA tweets, picks the best ones, generates replies with AI (Groq), and posts them on X. You can watch progress in Live status.
+      </p>
       <p id="triggerError" class="error-msg" style="display: none;"></p>
       <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
     </section>
@@ -379,7 +382,7 @@
         if (settingsStatus) settingsStatus.innerHTML = hasToken ? '<span class="connected-badge">Connected</span>' : '';
       }
 
-      actionsLink.href = `https://github.com/${repo.owner}/${repo.repo}/actions`;
+      if (actionsLink) actionsLink.href = 'https://github.com/' + repo.owner + '/' + repo.repo + '/actions';
 
       if (settingsToggle && settingsSection) settingsToggle.addEventListener('click', function() {
         var open = settingsSection.classList.toggle('open');
@@ -457,13 +460,21 @@
         return h;
       }
 
+      function fetchWithTimeout(url, opts, ms) {
+        var c = new AbortController();
+        var t = setTimeout(function() { c.abort(); }, ms || 15000);
+        opts = opts || {};
+        opts.signal = c.signal;
+        return fetch(url, opts).finally(function() { clearTimeout(t); });
+      }
+
       function fetchStatus() {
-        statusText.textContent = 'Loading…';
-        statusError.style.display = 'none';
-        fetch(apiUrl('/actions/runs?per_page=5'), { headers: authHeaders() })
+        if (statusText) statusText.textContent = 'Loading…';
+        if (statusError) { statusError.textContent = ''; statusError.style.display = 'none'; }
+        fetchWithTimeout(apiUrl('/actions/runs?per_page=5'), { headers: authHeaders() }, 15000)
           .then(function(res) {
             if (!res.ok) {
-              if (res.status === 403) throw new Error('Rate limited (403). Add a token in Settings or try later.');
+              if (res.status === 403 || res.status === 404) throw new Error('Need a token for this repo. Add one in Settings, then Refresh.');
               throw new Error('Could not fetch runs (' + res.status + ')');
             }
             return res.json();
@@ -486,9 +497,11 @@
             if (status === 'queued' || status === 'in_progress') pollUntilDone();
           })
           .catch(function(err) {
-            setStatus('idle', '');
-            statusError.textContent = err.message || 'Failed to load status';
-            statusError.style.display = 'block';
+            setStatus('idle', err.name === 'AbortError' ? 'Request timed out. Try Refresh.' : '');
+            if (statusError) {
+              statusError.textContent = err.message || 'Failed to load status. Add a token in Settings for private repos.';
+              statusError.style.display = 'block';
+            }
           });
       }
 
