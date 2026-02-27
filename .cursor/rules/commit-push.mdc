@@ -3,13 +3,14 @@ description: Commit and push changes after making edits to this project
 alwaysApply: true
 ---
 
-# Git: commit et push systématiques
+# Git: commit et push — à faire moi-même
 
-Après toute modification du code dans ce projet :
+Après toute modification du code dans ce projet, **exécuter moi-même** les commandes git (ne pas seulement les proposer) :
 
-1. **Toujours** proposer ou effectuer un **commit** avec un message clair (ex. `fix: ...`, `feat: ...`).
-2. **Toujours** faire un **push** vers `origin` (branche courante) après le commit.
+1. `git add` des fichiers modifiés (hors `.gitignore`).
+2. `git commit -m "..."` avec un message clair (ex. `fix: ...`, `feat: ...`, `chore: ...`).
+3. `git push origin <branche>` (souvent `main`).
 
-Exceptions : ne pas commiter les fichiers listés dans `.gitignore` (`.env`, `cookies.json`, `credentials.json` si ajouté, etc.). Ne pas inclure de clés API ou cookies dans les commits.
+Ne jamais commiter les fichiers listés dans `.gitignore` (`.env`, `cookies.json`, etc.) ni de clés/cookies.
 
-Si le terminal git timeout ou échoue, donner à l’utilisateur les commandes exactes à exécuter localement.
+Si le terminal timeout ou échoue après retry, donner à l’utilisateur les commandes exactes à lancer localement.
