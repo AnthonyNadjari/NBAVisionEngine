@@ -1,0 +1,15 @@
+---
+description: Commit and push changes after making edits to this project
+alwaysApply: true
+---
+
+# Git: commit et push systématiques
+
+Après toute modification du code dans ce projet :
+
+1. **Toujours** proposer ou effectuer un **commit** avec un message clair (ex. `fix: ...`, `feat: ...`).
+2. **Toujours** faire un **push** vers `origin` (branche courante) après le commit.
+
+Exceptions : ne pas commiter les fichiers listés dans `.gitignore` (`.env`, `cookies.json`, `credentials.json` si ajouté, etc.). Ne pas inclure de clés API ou cookies dans les commits.
+
+Si le terminal git timeout ou échoue, donner à l’utilisateur les commandes exactes à exécuter localement.
