@@ -83,7 +83,7 @@ def run_session(page, context, *, browser, playwright_instance):
                 continue
 
             tweet_id = tweet.get("tweet_id")
-            tweet_url = f"https://twitter.com/{author}/status/{tweet_id}"
+            tweet_url = f"https://x.com/{author}/status/{tweet_id}"
             seen_tweet_ids.add(tweet_id)
 
             # LLM

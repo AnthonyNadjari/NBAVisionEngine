@@ -100,7 +100,7 @@ def fetch_followers_for_tweets(
     """
     Open profile in new tab, get followers from aria-label, close tab. Mutates tweets[].followers.
     """
-    base_url = "https://twitter.com"
+    base_url = "https://x.com"
     opened = 0
     for t in tweets:
         if opened >= max_profiles:

@@ -1,6 +1,6 @@
-# Export Twitter cookies for NBAVision Engine
+# Export Twitter / X cookies for NBAVision Engine
 
-The engine runs on GitHub Actions and needs your Twitter session as cookies. Here’s how to get them **safely** (never commit or share this JSON).
+The engine runs on GitHub Actions and needs your X (Twitter) session as cookies. It supports both `.x.com` and `.twitter.com` cookies; **x.com** URLs are used so `.x.com` cookies work. Here’s how to get them **safely** (never commit or share this JSON).
 
 ## 1. Log in to Twitter
 
@@ -49,9 +49,11 @@ Example (shortened):
 
 - **GitHub Actions:** in your repo go to **Settings → Secrets and variables → Actions**, add a secret:
   - **Name:** `TWITTER_COOKIES_JSON`
-  - **Value:** paste the **entire** JSON array (one line is fine).
+  - **Value:** paste the **entire** JSON array (one line is fine). Same format as when you export from x.com/twitter.com (Cookie-Editor / EditThisCookie).
 
-Do **not** commit `.env` or paste cookies in code or issues. Treat them like a password.
+- **Local run:** you can also put the JSON in a file named `cookies.json` in the project root (the file is gitignored). If `TWITTER_COOKIES_JSON` is not set, the app will load from `cookies.json` (or from the path in `TWITTER_COOKIES_FILE`).
+
+Do **not** commit `cookies.json`, `.env`, or paste cookies in code or issues. Treat them like a password.
 
 ## 6. Refresh when session expires
 

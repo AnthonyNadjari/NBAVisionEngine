@@ -8,10 +8,36 @@ from config import get_twitter_cookies_json, TWITTER_HOME_URL
 
 
 def parse_cookies(raw: str) -> list[dict]:
-    """Parse TWITTER_COOKIES_JSON into list of cookie dicts."""
+    """Parse TWITTER_COOKIES_JSON into list of cookie dicts. Normalize for Playwright (.x.com or .twitter.com)."""
     if not raw or raw.strip() in ("", "[]"):
         return []
-    return json.loads(raw)
+    raw_list = json.loads(raw)
+    out = []
+    for c in raw_list:
+        if not isinstance(c, dict) or not c.get("name") or c.get("value") is None:
+            continue
+        # Playwright expects: name, value, domain, path, [expires], [httpOnly], [secure], [sameSite]
+        p = {
+            "name": str(c["name"]),
+            "value": str(c["value"]),
+            "domain": c.get("domain") or ".x.com",
+            "path": c.get("path") or "/",
+        }
+        if c.get("httpOnly") is not None:
+            p["httpOnly"] = bool(c["httpOnly"])
+        if c.get("secure") is not None:
+            p["secure"] = bool(c["secure"])
+        exp = c.get("expirationDate") or c.get("expires")
+        if exp is not None:
+            p["expires"] = int(float(exp))
+        if c.get("sameSite"):
+            s = str(c["sameSite"]).lower()
+            if s == "no_restriction":
+                p["sameSite"] = "None"
+            elif s in ("strict", "lax", "none"):
+                p["sameSite"] = s.capitalize() if s != "none" else "None"
+        out.append(p)
+    return out
 
 
 def launch_and_auth():

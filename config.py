@@ -63,16 +63,20 @@ SCROLL_DELTA_MIN = 1200
 SCROLL_DELTA_MAX = 2000
 CYCLE_INTERVAL_JITTER_SEC = 30
 
-# Twitter
-TWITTER_HOME_URL = "https://twitter.com/home"
-TWITTER_SEARCH_BASE = "https://twitter.com/search?q={query}&f=live"
+# X (Twitter) — use x.com so .x.com cookies are sent
+TWITTER_HOME_URL = "https://x.com/home"
+TWITTER_SEARCH_BASE = "https://x.com/search?q={query}&f=live"
 
-# Secrets (injected via env / GitHub Secrets)
+# Secrets (injected via env / GitHub Secrets, or from file for local)
 def get_twitter_cookies_json() -> str:
-    raw = os.getenv("TWITTER_COOKIES_JSON", "")
-    if not raw or raw.strip() in ("", "[]"):
-        return "[]"
-    return raw.strip()
+    raw = os.getenv("TWITTER_COOKIES_JSON", "").strip()
+    if raw and raw not in ("", "[]"):
+        return raw
+    path = os.getenv("TWITTER_COOKIES_FILE", "cookies.json").strip()
+    if path and os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip()
+    return "[]"
 
 
 def get_llm_api_key() -> str:
