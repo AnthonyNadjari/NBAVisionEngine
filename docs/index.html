@@ -24,235 +24,45 @@
       --error: #ef4444;
       --border: rgba(249, 115, 22, 0.25);
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Rajdhani', sans-serif;
-      background: var(--bg-deep);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* Court lines background */
-    .court-bg {
-      position: fixed;
-      inset: 0;
-      background:
-        linear-gradient(180deg, transparent 0%, var(--court) 50%, transparent 100%),
-        repeating-linear-gradient(
-          90deg,
-          transparent 0px,
-          transparent 99px,
-          rgba(249, 115, 22, 0.03) 99px,
-          rgba(249, 115, 22, 0.03) 100px
-        ),
-        radial-gradient(ellipse 80% 50% at 50% 120%, var(--accent-glow) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .container {
-      position: relative;
-      z-index: 1;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 4rem;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-      padding: 1.5rem;
-    }
-    .logo {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 900;
-      font-size: clamp(1.8rem, 5vw, 2.8rem);
-      letter-spacing: 0.15em;
-      background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, #fff 100%);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: shine 4s ease-in-out infinite;
-    }
-    @keyframes shine {
-      0%, 100% { background-position: 0% center; }
-      50% { background-position: 100% center; }
-    }
-    .tagline {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 400;
-      font-size: 0.75rem;
-      letter-spacing: 0.4em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-top: 0.5rem;
-      opacity: 0.9;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-      backdrop-filter: blur(12px);
-      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-    }
+    body { font-family: 'Rajdhani', sans-serif; background: var(--bg-deep); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+    .court-bg { position: fixed; inset: 0; background: linear-gradient(180deg, transparent 0%, var(--court) 50%, transparent 100%), repeating-linear-gradient(90deg, transparent 0px, transparent 99px, rgba(249, 115, 22, 0.03) 99px, rgba(249, 115, 22, 0.03) 100px), radial-gradient(ellipse 80% 50% at 50% 120%, var(--accent-glow) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+    .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    header { text-align: center; margin-bottom: 2.5rem; padding: 1.5rem; }
+    .logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: clamp(1.8rem, 5vw, 2.8rem); letter-spacing: 0.15em; background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, #fff 100%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: shine 4s ease-in-out infinite; }
+    @keyframes shine { 0%, 100% { background-position: 0% center; } 50% { background-position: 100% center; } }
+    .tagline { font-family: 'Orbitron', sans-serif; font-weight: 400; font-size: 0.75rem; letter-spacing: 0.4em; text-transform: uppercase; color: var(--accent); margin-top: 0.5rem; opacity: 0.9; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; backdrop-filter: blur(12px); transition: background 0.2s, border-color 0.2s; }
     .card:hover { background: var(--bg-card-hover); border-color: rgba(249, 115, 22, 0.35); }
-    .card-title {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 600;
-      font-size: 0.9rem;
-      letter-spacing: 0.1em;
-      color: var(--accent);
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .card-title::before {
-      content: '';
-      width: 4px;
-      height: 1em;
-      background: var(--accent);
-      border-radius: 2px;
-    }
-
-    .status-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    .status-badge {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.75rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .status-badge.queued   { background: var(--text-muted); color: var(--bg-deep); }
+    .card-title { font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card-title::before { content: ''; width: 4px; height: 1em; background: var(--accent); border-radius: 2px; }
+    .status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .status-badge { font-family: 'Orbitron', sans-serif; font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-badge.queued { background: var(--text-muted); color: var(--bg-deep); }
     .status-badge.in_progress { background: var(--accent); color: var(--bg-deep); animation: pulse 1.5s ease-in-out infinite; }
     .status-badge.completed { background: var(--success); color: var(--bg-deep); }
-    .status-badge.failure  { background: var(--error); color: #fff; }
+    .status-badge.failure { background: var(--error); color: #fff; }
     .status-badge.cancelled { background: var(--text-muted); color: var(--bg-deep); }
     .status-badge.idle { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
-
-    .stat {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-    }
-    .stat strong { color: var(--text); }
-
-    .btn {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 600;
-      font-size: 0.8rem;
-      letter-spacing: 0.08em;
-      padding: 0.65rem 1.25rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
-      color: #fff;
-      box-shadow: 0 4px 20px var(--accent-glow);
-    }
-    .btn-primary:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 28px var(--accent-glow);
-    }
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .btn-secondary {
-      background: transparent;
-      color: var(--accent);
-      border: 1px solid var(--accent);
-    }
-    .btn-secondary:hover { background: rgba(249, 115, 22, 0.15); }
-
-    .token-row {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+    .stat { font-size: 0.95rem; color: var(--text-muted); }
+    .btn { font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.08em; padding: 0.65rem 1.25rem; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%); color: #fff; box-shadow: 0 4px 20px var(--accent-glow); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px var(--accent-glow); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .token-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center; }
     .token-row .btn { flex: 0 0 auto; }
-    .token-row input { flex: 1; min-width: 180px; padding: 0.5rem 0.75rem; background: rgba(10,10,15,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.85rem; }
-    .token-row input:focus { outline: none; border-color: var(--accent); }
-    .connected-badge { font-size: 0.75rem; color: var(--success); display: inline-flex; align-items: center; gap: 0.35rem; }
-    .connected-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
-
-    .help-text {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 0.5rem;
-      line-height: 1.5;
-    }
+    .help-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.5; }
     .help-text a { color: var(--accent); text-decoration: none; }
-    .help-text a:hover { text-decoration: underline; }
-
-    .section-toggle {
-      width: 100%;
-      text-align: left;
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.8rem;
-      letter-spacing: 0.05em;
-      color: var(--accent);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0.5rem 0;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
+    .section-toggle { width: 100%; text-align: left; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0.5rem 0; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
     .section-toggle:hover { color: #fff; }
     .section-toggle::after { content: '▼'; font-size: 0.65rem; transition: transform 0.2s; }
-    .section-toggle.open::after { transform: rotate(-180deg); }
-    .section-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease-out;
-    }
+    .section-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
     .section-content.open { max-height: 1200px; }
-    .section-content ol, .section-content ul {
-      margin: 0.5rem 0 1rem 1.25rem;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      line-height: 1.7;
-    }
-
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 10px var(--success);
-      animation: live 2s ease-in-out infinite;
-    }
+    .section-content ol, .section-content ul { margin: 0.5rem 0 1rem 1.25rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); animation: live 2s ease-in-out infinite; }
     @keyframes live { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-    .run-details {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border);
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
+    .run-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
     .run-details a { color: var(--accent); }
     .error-msg { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
   </style>
@@ -269,44 +79,25 @@
       <h2 class="card-title"><span class="live-dot"></span> Live status</h2>
       <div class="status-row">
         <span id="statusBadge" class="status-badge idle">—</span>
-        <span id="statusText" class="stat">Loading last run…</span>
+        <span id="statusText" class="stat">Loading…</span>
       </div>
       <div id="runDetails" class="run-details" style="display: none;"></div>
       <div class="token-row">
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
       </div>
-      <p class="help-text">
-        Add a GitHub token in Settings to trigger runs and see live status.
-      </p>
       <p id="statusError" class="error-msg" style="display: none;"></p>
+      <p id="tokenHint" class="help-text" style="display: none;"></p>
     </section>
 
     <section class="card">
       <h2 class="card-title">Trigger run</h2>
       <div class="token-row">
-        <button type="button" class="btn btn-primary" id="triggerBtn" disabled>Start engine run</button>
+        <button type="button" class="btn btn-primary" id="triggerBtn">Start engine run</button>
       </div>
-      <p class="help-text" id="triggerHelp">
-        Save a token in Settings to start a run. Run can take up to 6 hours; status updates above.
-      </p>
-      <p class="help-text" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;">
-        <strong>What happens?</strong> This starts the NBAVision workflow on GitHub Actions: the bot scrapes NBA tweets, picks the best ones, generates replies with AI (Groq), and posts them on X. You can watch progress in Live status.
-      </p>
+      <p class="help-text">Run can take up to 6 hours. Status updates above.</p>
+      <p class="help-text" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;"><strong>What happens?</strong> Starts the NBAVision workflow on GitHub Actions: scrapes NBA tweets, picks the best, generates replies with AI, posts on X.</p>
       <p id="triggerError" class="error-msg" style="display: none;"></p>
       <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
-    </section>
-
-    <section class="card">
-      <button type="button" class="section-toggle" id="settingsToggle" aria-expanded="false">Settings — GitHub token</button>
-      <div id="settingsSection" class="section-content">
-        <p class="help-text" style="margin-bottom: 0.75rem;">Paste a <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=NBAVision" target="_blank" rel="noopener">Personal Access Token</a> (repo scope). Stored in this browser session only.</p>
-        <div class="token-row">
-          <input type="password" id="tokenInput" placeholder="ghp_..." autocomplete="off" />
-          <button type="button" class="btn btn-primary" id="saveTokenBtn">Save</button>
-          <button type="button" class="btn btn-secondary" id="clearTokenBtn">Clear</button>
-        </div>
-        <p id="settingsStatus" class="help-text" style="margin-top: 0.5rem;"></p>
-      </div>
     </section>
 
     <section class="card">
@@ -314,209 +105,149 @@
       <div id="cookiesSection" class="section-content">
         <ol>
           <li>Log in to <strong>Twitter (X)</strong> in Chrome or Edge.</li>
-          <li>Install a cookie export extension, e.g. <a href="https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn" target="_blank" rel="noopener">Cookie-Editor</a> or <a href="https://chromewebstore.google.com/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg" target="_blank" rel="noopener">EditThisCookie</a>.</li>
-          <li>Open <code>twitter.com</code> (or <code>x.com</code>), then open the extension.</li>
-          <li>Export cookies as <strong>JSON</strong> (Cookie-Editor: "Export" → JSON; ensure it’s an <strong>array</strong> of objects with <code>name</code>, <code>value</code>, <code>domain</code>, <code>path</code>, etc.).</li>
-          <li>Copy the full JSON array and paste it into <code>credentials.json</code> under <code>twitter_cookies</code> (project root).</li>
+          <li>Install <a href="https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn" target="_blank" rel="noopener">Cookie-Editor</a> or <a href="https://chromewebstore.google.com/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg" target="_blank" rel="noopener">EditThisCookie</a>.</li>
+          <li>On x.com open the extension, Export as JSON (array).</li>
+          <li>Paste into <code>credentials.json</code> under <code>twitter_cookies</code> (project root).</li>
         </ol>
-        <p class="help-text">
-          The engine uses these cookies to run in headless Chrome on GitHub Actions. Do not share the JSON; treat it like a password.
-        </p>
       </div>
     </section>
   </div>
 
   <script>
     (function() {
-      const WORKFLOW_FILE = 'nbavision.yml';
-      const STORAGE_KEY = 'nbavision_gh_token';
-
-      const repo = detectRepo();
-      function detectRepo() {
-        const host = window.location.hostname || '';
-        const path = window.location.pathname || '';
-        if (host.includes('github.io')) {
-          const parts = path.split('/').filter(Boolean);
-          const repoName = parts[0] || 'NBAVisionEngine';
-          const owner = host.replace('.github.io', '').replace('.github.dev', '');
-          return { owner, repo: repoName };
-        }
-        return { owner: 'AnthonyNadjari', repo: 'NBAVisionEngine' };
-      }
-
-      function apiUrl(path) {
-        return `https://api.github.com/repos/${repo.owner}/${repo.repo}${path}`;
-      }
-
+      var WORKFLOW_FILE = 'nbavision.yml';
+      var TOKEN_KEY = 'nbavision_gh_token';
       function getToken() {
-        return sessionStorage.getItem(STORAGE_KEY) || '';
-      }
-      function setToken(t) {
-        if (t) sessionStorage.setItem(STORAGE_KEY, t);
-        else sessionStorage.removeItem(STORAGE_KEY);
-        if (tokenInput) tokenInput.value = t ? '••••••••' : '';
-        updateUI();
-      }
-
-      const statusBadge = document.getElementById('statusBadge');
-      const statusText = document.getElementById('statusText');
-      const runDetails = document.getElementById('runDetails');
-      const statusError = document.getElementById('statusError');
-      const refreshBtn = document.getElementById('refreshBtn');
-      const triggerBtn = document.getElementById('triggerBtn');
-      const triggerError = document.getElementById('triggerError');
-      const triggerSuccess = document.getElementById('triggerSuccess');
-      const tokenInput = document.getElementById('tokenInput');
-      const saveTokenBtn = document.getElementById('saveTokenBtn');
-      const clearTokenBtn = document.getElementById('clearTokenBtn');
-      const settingsStatus = document.getElementById('settingsStatus');
-      const settingsToggle = document.getElementById('settingsToggle');
-      const settingsSection = document.getElementById('settingsSection');
-      const actionsLink = document.getElementById('actionsLink');
-      const cookiesToggle = document.getElementById('cookiesToggle');
-      const cookiesSection = document.getElementById('cookiesSection');
-
-      function updateUI() {
-        var hasToken = !!getToken();
-        if (triggerBtn) triggerBtn.disabled = !hasToken;
-        if (settingsStatus) settingsStatus.innerHTML = hasToken ? '<span class="connected-badge">Connected</span>' : '';
+        var t = sessionStorage.getItem(TOKEN_KEY) || '';
+        if (t) return t;
+        var h = (window.location.hash || '').replace(/^#/, '');
+        var q = (window.location.search || '').replace(/^\?/, '').split('&');
+        for (var i = 0; i < q.length; i++) { var p = q[i].split('='); if (p[0] === 't' || p[0] === 'token' || p[0].indexOf('ghp') === 0) { t = decodeURIComponent((p[1] || p[0]).replace(/\+/g, ' ')); break; } }
+        if (!t && h.indexOf('ghp_') === 0) t = h;
+        if (t) { sessionStorage.setItem(TOKEN_KEY, t); if (window.history && window.history.replaceState) window.history.replaceState('', document.title, window.location.pathname + window.location.search); }
+        return t || '';
       }
 
-      if (actionsLink) actionsLink.href = 'https://github.com/' + repo.owner + '/' + repo.repo + '/actions';
+      var repo = { owner: 'AnthonyNadjari', repo: 'NBAVisionEngine' };
+      if (window.location.hostname && window.location.hostname.indexOf('github.io') !== -1) {
+        var parts = (window.location.pathname || '').split('/').filter(Boolean);
+        if (parts[0]) repo.repo = parts[0];
+        repo.owner = window.location.hostname.replace('.github.io', '').replace('.github.dev', '');
+      }
 
-      if (settingsToggle && settingsSection) settingsToggle.addEventListener('click', function() {
-        var open = settingsSection.classList.toggle('open');
-        settingsToggle.classList.toggle('open', open);
-        settingsToggle.setAttribute('aria-expanded', open);
-      });
+      function apiUrl(path) { return 'https://api.github.com/repos/' + repo.owner + '/' + repo.repo + path; }
 
-      if (saveTokenBtn && tokenInput) saveTokenBtn.addEventListener('click', function() {
-        var t = tokenInput.value.trim();
-        if (t && t !== '••••••••') { setToken(t); if (settingsStatus) settingsStatus.innerHTML = '<span class="connected-badge">Saved</span>'; statusError.style.display = 'none'; fetchStatus(); }
-      });
-      if (clearTokenBtn) clearTokenBtn.addEventListener('click', function() {
-        setToken(''); if (settingsStatus) settingsStatus.textContent = 'Cleared.'; setStatus('idle', 'Add a token in Settings to see status and trigger runs.'); runDetails.style.display = 'none';
-      });
-
-      cookiesToggle.addEventListener('click', function() {
-        var open = cookiesSection.classList.toggle('open');
-        cookiesToggle.classList.toggle('open', open);
-        cookiesToggle.setAttribute('aria-expanded', open);
-      });
-
-      refreshBtn.addEventListener('click', function() {
-        statusError.style.display = 'none';
-        fetchStatus();
-      });
-
-      triggerBtn.addEventListener('click', function() {
-        triggerError.style.display = 'none';
-        triggerSuccess.style.display = 'none';
-        var token = getToken();
-        if (!token) return;
-        triggerBtn.disabled = true;
-        fetch(apiUrl('/actions/workflows/' + WORKFLOW_FILE + '/dispatches'), {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ ref: 'main' })
-        })
-          .then(function(res) {
-            if (res.status === 204) {
-              triggerSuccess.textContent = 'Run started. Status will update above.';
-              triggerSuccess.style.display = 'block';
-              setTimeout(fetchStatus, 2000);
-              pollUntilDone();
-            } else {
-              return res.json().then(function(j) { throw new Error(j.message || 'Trigger failed'); });
-            }
-          })
-          .catch(function(err) {
-            triggerError.textContent = err.message || 'Trigger failed.';
-            triggerError.style.display = 'block';
-          })
-          .finally(function() { triggerBtn.disabled = false; });
-      });
+      var statusBadge = document.getElementById('statusBadge');
+      var statusText = document.getElementById('statusText');
+      var runDetails = document.getElementById('runDetails');
+      var statusError = document.getElementById('statusError');
+      var refreshBtn = document.getElementById('refreshBtn');
+      var triggerBtn = document.getElementById('triggerBtn');
+      var triggerError = document.getElementById('triggerError');
+      var triggerSuccess = document.getElementById('triggerSuccess');
+      var cookiesToggle = document.getElementById('cookiesToggle');
+      var cookiesSection = document.getElementById('cookiesSection');
+      var tokenHint = document.getElementById('tokenHint');
 
       function setStatus(status, text, detailsHtml) {
-        statusBadge.className = 'status-badge ' + (status || 'idle');
-        statusBadge.textContent = (status || '—').replace('_', ' ');
-        statusText.textContent = text || '';
-        if (detailsHtml) {
-          runDetails.innerHTML = detailsHtml;
-          runDetails.style.display = 'block';
-        } else {
-          runDetails.style.display = 'none';
+        if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
+        if (statusText) statusText.textContent = text || '';
+        if (runDetails) {
+          runDetails.innerHTML = detailsHtml || '';
+          runDetails.style.display = detailsHtml ? 'block' : 'none';
         }
-      }
-
-      function authHeaders() {
-        var h = { 'Accept': 'application/vnd.github.v3+json' };
-        var t = getToken();
-        if (t) h['Authorization'] = 'Bearer ' + t;
-        return h;
       }
 
       function fetchWithTimeout(url, opts, ms) {
         var c = new AbortController();
         var t = setTimeout(function() { c.abort(); }, ms || 15000);
-        opts = opts || {};
-        opts.signal = c.signal;
+        opts = opts || {}; opts.signal = c.signal;
         return fetch(url, opts).finally(function() { clearTimeout(t); });
       }
 
       function fetchStatus() {
         if (statusText) statusText.textContent = 'Loading…';
         if (statusError) { statusError.textContent = ''; statusError.style.display = 'none'; }
-        fetchWithTimeout(apiUrl('/actions/runs?per_page=5'), { headers: authHeaders() }, 15000)
+        fetchWithTimeout(apiUrl('/actions/runs?per_page=5'), {
+          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + getToken() }
+        }, 15000)
           .then(function(res) {
-            if (!res.ok) {
-              if (res.status === 403 || res.status === 404) throw new Error('Need a token for this repo. Add one in Settings, then Refresh.');
-              throw new Error('Could not fetch runs (' + res.status + ')');
-            }
+            if (!res.ok) throw new Error('API ' + res.status);
             return res.json();
           })
           .then(function(data) {
-            const runs = data.workflow_runs || [];
-            const nbavision = runs.find(function(r) { return (r.path || r.name || '').includes('nbavision') || (r.name && r.name.indexOf('NBAVision') !== -1); }) || runs[0];
-            if (!nbavision) {
-              setStatus('idle', 'No runs yet. Open Actions and click “Run workflow”.');
+            var runs = (data && data.workflow_runs) || [];
+            var r = runs.find(function(w) { return (w.path || w.name || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; }) || runs[0];
+            if (!r) {
+              setStatus('idle', 'No runs yet. Click Start engine run.');
               return;
             }
-            const status = nbavision.status;
-            const conclusion = nbavision.conclusion;
-            const created = nbavision.created_at ? new Date(nbavision.created_at).toLocaleString() : '';
-            const url = nbavision.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
-            var displayStatus = conclusion || status;
+            var st = r.conclusion || r.status;
+            var created = r.created_at ? new Date(r.created_at).toLocaleString() : '';
             var msg = 'Last run: ' + created;
-            if (status === 'in_progress') msg += ' — running…';
-            setStatus(displayStatus, msg, '<a href="' + url + '" target="_blank" rel="noopener">View run on GitHub →</a>');
-            if (status === 'queued' || status === 'in_progress') pollUntilDone();
+            if (r.status === 'in_progress') msg += ' — running…';
+            var url = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
+            setStatus(st, msg, '<a href="' + url + '" target="_blank" rel="noopener">View run on GitHub →</a>');
+            if (r.status === 'queued' || r.status === 'in_progress') poll();
           })
           .catch(function(err) {
-            setStatus('idle', err.name === 'AbortError' ? 'Request timed out. Try Refresh.' : '');
+            setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : '');
             if (statusError) {
-              statusError.textContent = err.message || 'Failed to load status. Add a token in Settings for private repos.';
+              statusError.textContent = err.message || 'Could not load runs.';
               statusError.style.display = 'block';
             }
           });
       }
 
-      var pollTimer = null;
-      function pollUntilDone() {
+      var pollTimer;
+      function poll() {
         if (pollTimer) clearTimeout(pollTimer);
-        pollTimer = setTimeout(function() {
-          fetchStatus();
-          pollTimer = null;
-        }, 10000);
+        pollTimer = setTimeout(function() { pollTimer = null; fetchStatus(); }, 10000);
       }
 
-      if (tokenInput && getToken()) tokenInput.value = '••••••••';
-      updateUI();
-      fetchStatus();
+      refreshBtn.addEventListener('click', function() {
+        if (statusText) statusText.textContent = 'Loading…';
+        if (statusError) statusError.style.display = 'none';
+        fetchStatus();
+      });
+
+      triggerBtn.addEventListener('click', function() {
+        triggerError.style.display = 'none';
+        triggerSuccess.style.display = 'none';
+        triggerBtn.disabled = true;
+        fetch(apiUrl('/actions/workflows/' + WORKFLOW_FILE + '/dispatches'), {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + getToken(), 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ref: 'main' })
+        })
+          .then(function(res) {
+            if (res.status === 204) {
+              triggerSuccess.textContent = 'Run started. Status will update above.';
+              triggerSuccess.style.display = 'block';
+              setTimeout(fetchStatus, 1500);
+              poll();
+            } else return res.json().then(function(j) { throw new Error(j.message || 'Trigger failed'); });
+          })
+          .catch(function(err) {
+            triggerError.textContent = err.message || 'Trigger failed';
+            triggerError.style.display = 'block';
+          })
+          .finally(function() { triggerBtn.disabled = false; });
+      });
+
+      if (cookiesToggle && cookiesSection) cookiesToggle.addEventListener('click', function() {
+        var open = cookiesSection.classList.toggle('open');
+        cookiesToggle.classList.toggle('open', open);
+        cookiesToggle.setAttribute('aria-expanded', !!open);
+      });
+
+      (function init() {
+        if (!getToken()) {
+          if (tokenHint) { tokenHint.textContent = 'Visit this page once with the token in the URL: ' + window.location.href.split('#')[0] + '#ghp_YOUR_TOKEN'; tokenHint.style.display = 'block'; }
+          if (triggerBtn) triggerBtn.disabled = true;
+        }
+        fetchStatus();
+      })();
     })();
   </script>
 </body>
