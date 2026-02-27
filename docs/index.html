@@ -190,36 +190,10 @@
       align-items: center;
     }
     .token-row .btn { flex: 0 0 auto; }
-    .token-row input {
-      flex: 1;
-      min-width: 180px;
-      padding: 0.5rem 0.75rem;
-      background: rgba(10, 10, 15, 0.6);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 0.85rem;
-    }
-    .token-row input::placeholder { color: var(--text-muted); }
-    .token-row input:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-    .connected-badge {
-      font-size: 0.75rem;
-      color: var(--success);
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-    .connected-badge::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-    }
+    .token-row input { flex: 1; min-width: 180px; padding: 0.5rem 0.75rem; background: rgba(10,10,15,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.85rem; }
+    .token-row input:focus { outline: none; border-color: var(--accent); }
+    .connected-badge { font-size: 0.75rem; color: var(--success); display: inline-flex; align-items: center; gap: 0.35rem; }
+    .connected-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
 
     .help-text {
       font-size: 0.85rem;
@@ -302,7 +276,7 @@
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
       </div>
       <p class="help-text">
-        Add a GitHub token in Settings to trigger runs and get live updates without leaving this page.
+        Add a GitHub token in Settings to trigger runs and see live status.
       </p>
       <p id="statusError" class="error-msg" style="display: none;"></p>
     </section>
@@ -313,7 +287,7 @@
         <button type="button" class="btn btn-primary" id="triggerBtn" disabled>Start engine run</button>
       </div>
       <p class="help-text" id="triggerHelp">
-        Connect a GitHub token in Settings to start a run from here. Run can take up to 6 hours; status updates above.
+        Save a token in Settings to start a run. Run can take up to 6 hours; status updates above.
       </p>
       <p id="triggerError" class="error-msg" style="display: none;"></p>
       <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
@@ -322,9 +296,7 @@
     <section class="card">
       <button type="button" class="section-toggle" id="settingsToggle" aria-expanded="false">Settings — GitHub token</button>
       <div id="settingsSection" class="section-content">
-        <p class="help-text" style="margin-bottom: 0.75rem;">
-          One-time: paste a <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=NBAVision+control" target="_blank" rel="noopener">Personal Access Token</a> (repo scope). Stored only in this browser session so you can trigger runs and see status without opening GitHub.
-        </p>
+        <p class="help-text" style="margin-bottom: 0.75rem;">Paste a <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=NBAVision" target="_blank" rel="noopener">Personal Access Token</a> (repo scope). Stored in this browser session only.</p>
         <div class="token-row">
           <input type="password" id="tokenInput" placeholder="ghp_..." autocomplete="off" />
           <button type="button" class="btn btn-primary" id="saveTokenBtn">Save</button>
@@ -379,7 +351,7 @@
       function setToken(t) {
         if (t) sessionStorage.setItem(STORAGE_KEY, t);
         else sessionStorage.removeItem(STORAGE_KEY);
-        tokenInput.value = t ? '••••••••' : '';
+        if (tokenInput) tokenInput.value = t ? '••••••••' : '';
         updateUI();
       }
 
@@ -389,7 +361,6 @@
       const statusError = document.getElementById('statusError');
       const refreshBtn = document.getElementById('refreshBtn');
       const triggerBtn = document.getElementById('triggerBtn');
-      const triggerHelp = document.getElementById('triggerHelp');
       const triggerError = document.getElementById('triggerError');
       const triggerSuccess = document.getElementById('triggerSuccess');
       const tokenInput = document.getElementById('tokenInput');
@@ -399,48 +370,35 @@
       const settingsToggle = document.getElementById('settingsToggle');
       const settingsSection = document.getElementById('settingsSection');
       const actionsLink = document.getElementById('actionsLink');
-      const actionsBtn = document.getElementById('actionsBtn');
       const cookiesToggle = document.getElementById('cookiesToggle');
       const cookiesSection = document.getElementById('cookiesSection');
 
       function updateUI() {
         var hasToken = !!getToken();
         if (triggerBtn) triggerBtn.disabled = !hasToken;
-        if (settingsStatus) {
-          settingsStatus.innerHTML = hasToken ? '<span class="connected-badge">Connected</span> Token stored for this session.' : '';
-        }
+        if (settingsStatus) settingsStatus.innerHTML = hasToken ? '<span class="connected-badge">Connected</span>' : '';
       }
 
       actionsLink.href = `https://github.com/${repo.owner}/${repo.repo}/actions`;
-      if (actionsBtn) actionsBtn.href = actionsLink.href;
 
-      settingsToggle.addEventListener('click', function() {
+      if (settingsToggle && settingsSection) settingsToggle.addEventListener('click', function() {
         var open = settingsSection.classList.toggle('open');
         settingsToggle.classList.toggle('open', open);
         settingsToggle.setAttribute('aria-expanded', open);
+      });
+
+      if (saveTokenBtn && tokenInput) saveTokenBtn.addEventListener('click', function() {
+        var t = tokenInput.value.trim();
+        if (t && t !== '••••••••') { setToken(t); if (settingsStatus) settingsStatus.innerHTML = '<span class="connected-badge">Saved</span>'; statusError.style.display = 'none'; fetchStatus(); }
+      });
+      if (clearTokenBtn) clearTokenBtn.addEventListener('click', function() {
+        setToken(''); if (settingsStatus) settingsStatus.textContent = 'Cleared.'; setStatus('idle', 'Add a token in Settings to see status and trigger runs.'); runDetails.style.display = 'none';
       });
 
       cookiesToggle.addEventListener('click', function() {
         var open = cookiesSection.classList.toggle('open');
         cookiesToggle.classList.toggle('open', open);
         cookiesToggle.setAttribute('aria-expanded', open);
-      });
-
-      saveTokenBtn.addEventListener('click', function() {
-        var t = tokenInput.value.trim();
-        if (t && t !== '••••••••') {
-          setToken(t);
-          settingsStatus.innerHTML = '<span class="connected-badge">Saved</span> You can trigger runs and see live status.';
-          statusError.style.display = 'none';
-          fetchStatus();
-        }
-      });
-
-      clearTokenBtn.addEventListener('click', function() {
-        setToken('');
-        settingsStatus.textContent = 'Token cleared.';
-        setStatus('idle', 'Add a token in Settings to see status and trigger runs.');
-        runDetails.style.display = 'none';
       });
 
       refreshBtn.addEventListener('click', function() {
@@ -477,7 +435,7 @@
             triggerError.textContent = err.message || 'Trigger failed.';
             triggerError.style.display = 'block';
           })
-          .finally(function() { triggerBtn.disabled = !getToken(); });
+          .finally(function() { triggerBtn.disabled = false; });
       });
 
       function setStatus(status, text, detailsHtml) {
@@ -543,9 +501,7 @@
         }, 10000);
       }
 
-      if (getToken()) {
-        tokenInput.value = '••••••••';
-      }
+      if (tokenInput && getToken()) tokenInput.value = '••••••••';
       updateUI();
       fetchStatus();
     })();
