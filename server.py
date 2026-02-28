@@ -1,8 +1,12 @@
 """
 NBAVision Engine — Secure webhook server for remote trigger.
-Requires NBAVISION_SECRET in environment. Rate limited (5/hour).
+Requires NBAVISION_SECRET in environment (or .env). Rate limited (5/hour).
 """
 import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import time
 from collections import deque
 from datetime import datetime, timezone
