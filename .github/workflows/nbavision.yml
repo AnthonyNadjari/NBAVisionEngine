@@ -1,6 +1,6 @@
 # NBAVision Engine — GitHub Actions (Section 2.1)
 # Runtime max 6h, Python 3.11, Playwright Chromium.
-# Required repo secrets: TWITTER_COOKIES_JSON, LLM_API_KEY. Optional: LLM_MODEL.
+# Required: TWITTER_COOKIES_JSON. Optional: LLM_API_KEY (Groq), LLM_MODEL. Without LLM key: template replies.
 
 name: NBAVision Engine
 
@@ -20,14 +20,10 @@ jobs:
       - name: Check required secrets
         run: |
           if [ -z "${{ secrets.TWITTER_COOKIES_JSON }}" ]; then
-            echo "::error::Missing secret TWITTER_COOKIES_JSON. Add it in repo Settings → Secrets and variables → Actions. Value: JSON array of cookies (export from browser)."
+            echo "::error::Missing secret TWITTER_COOKIES_JSON. Add it in repo Settings → Secrets and variables → Actions."
             exit 1
           fi
-          if [ -z "${{ secrets.LLM_API_KEY }}" ]; then
-            echo "::error::Missing secret LLM_API_KEY. Add it in repo Settings → Secrets and variables → Actions (e.g. Groq API key)."
-            exit 1
-          fi
-          echo "Secrets present."
+          echo "Secrets OK. LLM_API_KEY optional (uses templates if not set)."
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

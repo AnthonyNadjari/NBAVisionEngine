@@ -29,7 +29,7 @@ Tout se trouve dans **`credentials.json`** à la racine du repo (pas de variable
 ```
 
 - **Cookies X** : export depuis le navigateur (Cookie-Editor / EditThisCookie) → tableau JSON dans `twitter_cookies`. Voir **[docs/SECRETS-SETUP.md](docs/SECRETS-SETUP.md)** pour GitHub Actions.
-- **LLM** : clé Groq (free tier, [console.groq.com](https://console.groq.com)) dans `llm_api_key`, optionnel `llm_model`.
+- **LLM** (optionnel) : sans clé = réponses template. Avec clé Groq dans `llm_api_key` = réponses IA.
 
 Les variables d’environnement (`TWITTER_COOKIES_JSON`, `LLM_API_KEY`, etc.) restent supportées en secours si le fichier n’est pas présent.
 
@@ -42,7 +42,7 @@ Les variables d’environnement (`TWITTER_COOKIES_JSON`, `LLM_API_KEY`, etc.) re
   Workflow `NBAVision Engine` (déclenché manuellement ou par cron). Runtime max 6 h.  
   **Ne pas committer `credentials.json`.** Configurer les **secrets du dépôt** : **Settings → Secrets and variables → Actions** :
   - **`TWITTER_COOKIES_JSON`** : tableau JSON des cookies X (exporter depuis le navigateur, même format que `twitter_cookies` dans `credentials.json`).
-  - **`LLM_API_KEY`** : clé API Groq (ou autre).
+  - **`LLM_API_KEY`** (optionnel) : clé Groq pour réponses IA. Sans = templates.
   - **`LLM_MODEL`** (optionnel) : ex. `llama-3.1-8b-instant`.
 
 ## Durée de vie des cookies (GitHub Actions)

@@ -1,10 +1,27 @@
 """
-NBAVision Engine — LLM API (Section 7): Groq free tier, REST, timeout 20s, retry 2.
+NBAVision Engine — Reply generation.
+Without LLM API key: uses template replies (no Groq, no setup).
+With LLM API key: uses Groq for AI-generated replies.
 """
 import json
+import random
 import re
 import requests
 from config import get_llm_api_key, get_llm_model, LLM_TIMEOUT_SECONDS, LLM_RETRY_MAX
+
+# Template replies when no LLM key — no API, no credentials
+TEMPLATE_REPLIES = [
+    "Tough matchup. Defense will decide it.",
+    "Key is who shows up in the 4th.",
+    "Can't sleep on the role players in this one.",
+    "Matchup to watch: the paint.",
+    "Coaching will matter more than people think.",
+    "Bench depth could swing this.",
+    "Expect a physical game.",
+    "The X-factor is health.",
+    "Clutch time will tell.",
+    "Rebounding battle will be huge.",
+]
 
 SYSTEM_PROMPT = """You are a professional NBA analyst replying on Twitter.
 
@@ -51,7 +68,7 @@ Return ONLY JSON:
 No extra text."""
 
 
-def _extract_json(text: str) -> dict | None:
+def _extract_json(text: str):
     """Try to parse JSON from LLM output (allow markdown code block)."""
     text = (text or "").strip()
     # Try raw parse
@@ -76,13 +93,28 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
-def call_llm(tweet_text: str, tweet_author: str = "") -> dict | None:
+def _should_skip_template(text: str) -> bool:
+    """Simple skip: avoid toxic/sensitive topics."""
+    t = (text or "").lower()
+    skip_words = ["death", "died", "kill", "crime", "war", "scandal", "arrest"]
+    return any(w in t for w in skip_words)
+
+
+def call_llm(tweet_text: str, tweet_author: str = ""):
     """
-    Call Groq API. Returns {"decision": "REPLY"|"SKIP", "reason": "...", "response": "..."} or None on timeout/error.
+    Returns {"decision": "REPLY"|"SKIP", "reason": "...", "response": "..."}.
+    Without API key: uses template replies. With key: calls Groq.
     """
     api_key = get_llm_api_key()
     if not api_key:
-        return None
+        # Template mode — no Groq, no credentials
+        if _should_skip_template(tweet_text):
+            return {"decision": "SKIP", "reason": "template_skip", "response": ""}
+        return {
+            "decision": "REPLY",
+            "reason": "template",
+            "response": random.choice(TEMPLATE_REPLIES),
+        }
 
     model = get_llm_model()
     url = "https://api.groq.com/openai/v1/chat/completions"

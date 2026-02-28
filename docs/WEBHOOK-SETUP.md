@@ -1,6 +1,6 @@
 # Webhook-triggered local automation
 
-Run NBAVision Engine on your local machine, triggered remotely from GitHub Pages. Uses a **persistent Chromium profile** — log into X once, never export cookies again.
+Run NBAVision Engine on your local machine, triggered remotely from GitHub Pages. Uses a **persistent Chromium profile** — log into X once, never export cookies again. **No Groq, no credentials.json** — uses template replies by default.
 
 ---
 
