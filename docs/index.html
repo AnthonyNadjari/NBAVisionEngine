@@ -79,7 +79,7 @@
       <h2 class="card-title"><span class="live-dot"></span> Live status</h2>
       <div class="status-row">
         <span id="statusBadge" class="status-badge idle">—</span>
-        <span id="statusText" class="stat">Loading…</span>
+        <span id="statusText" class="stat"></span>
       </div>
       <div id="runDetails" class="run-details" style="display: none;"></div>
       <div class="token-row">
@@ -107,14 +107,16 @@
       var WORKFLOW_FILE = 'nbavision.yml';
       var TOKEN_KEY = 'nbavision_gh_token';
       function getToken() {
-        var t = sessionStorage.getItem(TOKEN_KEY) || '';
-        if (t) return t;
-        var h = (window.location.hash || '').replace(/^#/, '');
-        var q = (window.location.search || '').replace(/^\?/, '').split('&');
-        for (var i = 0; i < q.length; i++) { var p = q[i].split('='); if (p[0] === 't' || p[0] === 'token' || p[0].indexOf('ghp') === 0) { t = decodeURIComponent((p[1] || p[0]).replace(/\+/g, ' ')); break; } }
-        if (!t && h.indexOf('ghp_') === 0) t = h;
-        if (t) { sessionStorage.setItem(TOKEN_KEY, t); if (window.history && window.history.replaceState) window.history.replaceState('', document.title, window.location.pathname + window.location.search); }
-        return t || '';
+        try {
+          var t = (typeof sessionStorage !== 'undefined' && sessionStorage) ? sessionStorage.getItem(TOKEN_KEY) || '' : '';
+          if (t) return t;
+          var h = (window.location.hash || '').replace(/^#/, '');
+          var q = (window.location.search || '').replace(/^\?/, '').split('&');
+          for (var i = 0; i < q.length; i++) { var p = q[i].split('='); if (p[0] === 't' || p[0] === 'token' || p[0].indexOf('ghp') === 0) { t = decodeURIComponent((p[1] || p[0]).replace(/\+/g, ' ')); break; } }
+          if (!t && h.indexOf('ghp_') === 0) t = h;
+          if (t) { sessionStorage.setItem(TOKEN_KEY, t); if (window.history && window.history.replaceState) window.history.replaceState('', document.title, window.location.pathname + window.location.search); }
+          return t || '';
+        } catch (e) { return ''; }
       }
 
       var repo = { owner: 'AnthonyNadjari', repo: 'NBAVisionEngine' };
@@ -152,16 +154,47 @@
         return fetch(url, opts).finally(function() { clearTimeout(t); });
       }
 
+      function showTokenHelp() {
+        if (statusError) {
+          statusError.textContent = 'Token missing or invalid. Open this page once with #ghp_YOUR_TOKEN in the URL.';
+          statusError.style.display = 'block';
+        }
+        if (tokenLink) {
+          var base = window.location.origin + (window.location.pathname || '/');
+          tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#">' + base + '#</a> (paste your ghp_ token after the #)';
+          tokenLink.style.display = 'block';
+        }
+      }
+
+      var loadingSafetyTimer;
+      function clearLoading() {
+        if (loadingSafetyTimer) { clearTimeout(loadingSafetyTimer); loadingSafetyTimer = null; }
+        if (statusText && statusText.textContent === 'Loading…') {
+          setStatus('idle', statusError && statusError.style.display === 'block' ? '' : 'Could not load. Click Refresh status.');
+        }
+      }
+
       function fetchStatus() {
+        if (loadingSafetyTimer) clearTimeout(loadingSafetyTimer);
         if (statusText) statusText.textContent = 'Loading…';
         if (statusError) { statusError.textContent = ''; statusError.style.display = 'none'; }
         if (tokenLink) tokenLink.style.display = 'none';
-        fetchWithTimeout(apiUrl('/actions/runs?per_page=5'), {
-          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + getToken() }
-        }, 15000)
+
+        var token;
+        try { token = getToken(); } catch (e) { setStatus('idle', ''); showTokenHelp(); if (statusError) statusError.textContent = 'Could not read token.'; statusError.style.display = 'block'; return; }
+        if (!token) { setStatus('idle', ''); showTokenHelp(); return; }
+
+        var url;
+        try { url = apiUrl('/actions/runs?per_page=5'); } catch (e) { setStatus('idle', ''); if (statusError) { statusError.textContent = 'Invalid repo config.'; statusError.style.display = 'block'; } return; }
+
+        loadingSafetyTimer = setTimeout(function() { loadingSafetyTimer = null; clearLoading(); }, 10000);
+
+        fetchWithTimeout(url, {
+          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
+        }, 8000)
           .then(function(res) {
             if (!res.ok) {
-              if (res.status === 401) throw new Error('Token missing or invalid. Open this page once with #ghp_YOUR_TOKEN in the URL.');
+              if (res.status === 401) throw new Error('Token missing or invalid.');
               throw new Error('API ' + res.status);
             }
             return res.json();
@@ -177,23 +210,24 @@
             var created = r.created_at ? new Date(r.created_at).toLocaleString() : '';
             var msg = 'Last run: ' + created;
             if (r.status === 'in_progress') msg += ' — running…';
-            var url = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
-            setStatus(st, msg, '<a href="' + url + '" target="_blank" rel="noopener">View run on GitHub →</a>');
+            var runUrl = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
+            setStatus(st, msg, '<a href="' + runUrl + '" target="_blank" rel="noopener">View run on GitHub →</a>');
             if (r.status === 'queued' || r.status === 'in_progress') poll();
           })
           .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
-            setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : '');
+            setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : (err.message || ''));
             if (statusError) {
               statusError.textContent = err.message || 'Could not load runs.';
               statusError.style.display = 'block';
             }
             if (tokenLink && (err.message || '').indexOf('Token') !== -1) {
               var base = window.location.origin + (window.location.pathname || '/');
-              tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#" id="tokenUrl">' + base + '#</a> (then paste your ghp_ token after the #)';
+              tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#">' + base + '#</a>';
               tokenLink.style.display = 'block';
             }
-          });
+          })
+          .finally(clearLoading);
       }
 
       var pollTimer;
@@ -233,7 +267,9 @@
       });
 
       (function init() {
-        if (!getToken() && triggerBtn) triggerBtn.disabled = true;
+        var t = getToken();
+        if (!t && triggerBtn) triggerBtn.disabled = true;
+        if (statusText && !statusText.textContent) statusText.textContent = 'Loading…';
         fetchStatus();
       })();
     })();
