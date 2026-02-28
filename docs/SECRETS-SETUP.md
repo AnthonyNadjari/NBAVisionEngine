@@ -1,6 +1,6 @@
 # GitHub Actions — Set up secrets (step-by-step)
 
-The workflow needs **2 repository secrets**. Follow these steps exactly.
+The workflow needs **1 required secret** (TWITTER_COOKIES_JSON). LLM_API_KEY is optional (templates used if not set).
 
 **Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.
 
@@ -17,27 +17,13 @@ The workflow needs **2 repository secrets**. Follow these steps exactly.
 
 ---
 
-## Step 2: Create the secret `LLM_API_KEY`
+## Step 2: Create the secret `TWITTER_COOKIES_JSON`
 
 1. Click **New repository secret**.
-2. **Name** (exactly): `LLM_API_KEY`
-3. **Secret** (value):  
-   Open your local file **`credentials.json`** in the project root.  
-   Copy the value of **`llm_api_key`** (the long string in quotes, e.g. `gsk_...`).  
-   Paste it into the **Secret** field.  
-   Do **not** include the key name or the quotes—only the key value.
-4. Click **Add secret**.
-
----
-
-## Step 3: Create the secret `TWITTER_COOKIES_JSON`
-
-1. Click **New repository secret** again.
 2. **Name** (exactly): `TWITTER_COOKIES_JSON`
 3. **Secret** (value):  
-   Open **`credentials.json`**.  
-   Find the part that says `"twitter_cookies":` followed by a **square bracket** `[`.  
-   Copy **everything from that `[` to the matching `]`** at the end of the cookies array.  
+   Export cookies from x.com (extension Cookie-Editor) → format JSON array.  
+   Or if you have `credentials.json`: copy only the array after `"twitter_cookies":` (from `[` to `]`).  
    If your export has `"domain": "x.com"` (no dot), that’s fine—the app normalizes it to `.x.com`.  
    So you copy only the array, e.g.:
    ```text
@@ -47,6 +33,16 @@ The workflow needs **2 repository secrets**. Follow these steps exactly.
    - The copied value can be one long line (that’s fine).
    - Paste that entire array into the **Secret** field.
 4. Click **Add secret**.
+
+---
+
+## Step 3 (optional): Create the secret `LLM_API_KEY`
+
+Only if you want AI-generated replies (Groq). Without it, template replies are used.
+
+1. Click **New repository secret**.
+2. **Name**: `LLM_API_KEY`
+3. **Secret**: your Groq API key (e.g. `gsk_...`)
 
 ---
 
@@ -71,11 +67,11 @@ Only if you want to override the default model:
 
 ## Quick reference
 
-| Secret name            | Where to get the value                                      |
-|------------------------|--------------------------------------------------------------|
-| `LLM_API_KEY`          | In `credentials.json`: the value of `"llm_api_key"`          |
-| `TWITTER_COOKIES_JSON` | In `credentials.json`: only the `[...]` array after `"twitter_cookies":` |
-| `LLM_MODEL` (optional) | e.g. `llama-3.1-8b-instant`                                  |
+| Secret name            | Required | Where to get the value                                      |
+|------------------------|----------|--------------------------------------------------------------|
+| `TWITTER_COOKIES_JSON` | Yes      | Export cookies from x.com (Cookie-Editor) → only the `[...]` array |
+| `LLM_API_KEY`          | No       | Groq API key (templates used if not set)                    |
+| `LLM_MODEL`            | No       | e.g. `llama-3.1-8b-instant`                                  |
 
 **Direct link to add secrets:**  
 **https://github.com/AnthonyNadjari/NBAVisionEngine/settings/secrets/actions**
