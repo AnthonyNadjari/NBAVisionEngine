@@ -3,6 +3,7 @@ NBAVision Engine — Secure webhook server for remote trigger.
 Requires NBAVISION_SECRET in environment (or .env). Rate limited (5/hour).
 """
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -49,7 +50,7 @@ app = FastAPI(title="NBAVision Webhook", docs_url=None, redoc_url=None)
 
 
 @app.post("/trigger")
-async def trigger(request: Request, x_api_key: str | None = Header(None, alias="X-API-KEY")):
+async def trigger(request: Request, x_api_key: Optional[str] = Header(None, alias="X-API-KEY")):
     """
     Trigger NBAVision Engine. Requires X-API-KEY header matching NBAVISION_SECRET.
     Returns 409 if a run is already in progress.
