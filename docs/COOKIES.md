@@ -1,6 +1,6 @@
 # Export Twitter / X cookies for NBAVision Engine
 
-The engine runs on GitHub Actions and needs your X (Twitter) session as cookies. It supports both `.x.com` and `.twitter.com` cookies; **x.com** URLs are used so `.x.com` cookies work. Here’s how to get them **safely** (never commit or share this JSON).
+The engine reads cookies from **`credentials.json`** at the project root (local runs), or from the **`TWITTER_COOKIES_JSON`** repository secret (GitHub Actions). It supports both `.x.com` and `.twitter.com` cookies; **x.com** URLs are used so `.x.com` cookies work. Put the exported array in the `twitter_cookies` key (credentials.json) or paste the same JSON as the value of the **TWITTER_COOKIES_JSON** secret.
 
 ## 1. Log in to Twitter
 
@@ -41,20 +41,23 @@ Example (shortened):
 
 ## 5. Where to put the cookies
 
-- **Local run:** put the JSON in a `.env` file as:
-  ```bash
-  TWITTER_COOKIES_JSON=[{"name":"auth_token",...}]
-  ```
-  (one line, no extra quotes around the JSON; the whole array is the value.)
+Put them in **`credentials.json`** at the project root:
 
-- **GitHub Actions:** in your repo go to **Settings → Secrets and variables → Actions**, add a secret:
-  - **Name:** `TWITTER_COOKIES_JSON`
-  - **Value:** paste the **entire** JSON array (one line is fine). Same format as when you export from x.com/twitter.com (Cookie-Editor / EditThisCookie).
+```json
+{
+  "llm_api_key": "your_groq_api_key",
+  "llm_model": "llama-3.1-8b-instant",
+  "twitter_cookies": [
+    {"name":"auth_token","value":"...","domain":".x.com","path":"/",...},
+    ...
+  ]
+}
+```
 
-- **Local run:** you can also put the JSON in a file named `cookies.json` in the project root (the file is gitignored). If `TWITTER_COOKIES_JSON` is not set, the app will load from `cookies.json` (or from the path in `TWITTER_COOKIES_FILE`).
+Paste your exported cookie array into the `twitter_cookies` key. Same file is used for local runs and GitHub Actions (no secrets). You can also use env vars or a separate `cookies.json` (see config) if you prefer.
 
-Do **not** commit `cookies.json`, `.env`, or paste cookies in code or issues. Treat them like a password.
+**Note:** If the repo is public, anyone can see `credentials.json`. Prefer a private repo or keep the file out of git if that's a concern.
 
 ## 6. Refresh when session expires
 
-If the engine starts failing with “Cookie invalid” or login redirects, your session expired. Export the cookies again from the same browser where you’re logged in and update the secret (or `.env`).
+If the engine starts failing with “Cookie invalid” or login redirects, your session expired. Export the cookies again from the same browser where you’re logged in and update the `twitter_cookies` array in `credentials.json`.

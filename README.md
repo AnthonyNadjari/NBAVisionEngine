@@ -7,7 +7,7 @@ Moteur d’automatisation orienté **visibilité Twitter NBA** : identification 
 ## Prérequis
 
 - Python 3.11
-- Secrets GitHub : `TWITTER_COOKIES_JSON`, `LLM_API_KEY` (ex. [Groq](https://console.groq.com) free tier)
+- Fichier **`credentials.json`** à la racine du projet (cookies X + clé API LLM)
 
 ## Installation
 
@@ -18,19 +18,32 @@ playwright install --with-deps chromium
 
 ## Configuration
 
-1. **Cookies Twitter**  
-   Exportez les cookies de votre session Twitter (navigateur) au format JSON array. Voir **[docs/COOKIES.md](docs/COOKIES.md)** pour le pas-à-pas (extensions Cookie-Editor / EditThisCookie, format attendu, où mettre la valeur en local et dans le secret GitHub `TWITTER_COOKIES_JSON`).
+Tout se trouve dans **`credentials.json`** à la racine du repo (pas de variables secrètes GitHub) :
 
-2. **LLM**  
-   Clé API Groq (free tier) : variable `LLM_API_KEY`. En local, mettez-la dans un fichier `.env` (non versionné). Sur GitHub Actions, ajoutez un secret de dépôt **LLM_API_KEY** (Settings → Secrets and variables → Actions). Optionnel : `LLM_MODEL` (défaut : `llama-3.1-8b-instant`).
+```json
+{
+  "llm_api_key": "ta_clé_groq",
+  "llm_model": "llama-3.1-8b-instant",
+  "twitter_cookies": [ { "name": "auth_token", "value": "...", "domain": ".x.com", "path": "/", ... }, ... ]
+}
+```
+
+- **Cookies X** : export depuis le navigateur (Cookie-Editor / EditThisCookie) → tableau JSON dans `twitter_cookies`. Voir **[docs/COOKIES.md](docs/COOKIES.md)** pour le pas-à-pas.
+- **LLM** : clé Groq (free tier, [console.groq.com](https://console.groq.com)) dans `llm_api_key`, optionnel `llm_model`.
+
+Les variables d’environnement (`TWITTER_COOKIES_JSON`, `LLM_API_KEY`, etc.) restent supportées en secours si le fichier n’est pas présent.
 
 ## Exécution
 
 - **Local :**  
-  `python main.py` (après avoir défini les variables d’environnement ou un `.env`).
+  `python main.py` (lit `credentials.json` automatiquement).
 
 - **GitHub Actions :**  
-  Workflow `NBAVision Engine` (déclenché manuellement ou par cron). Runtime max 6 h.
+  Workflow `NBAVision Engine` (déclenché manuellement ou par cron). Runtime max 6 h.  
+  **Ne pas committer `credentials.json`.** Configurer les **secrets du dépôt** : **Settings → Secrets and variables → Actions** :
+  - **`TWITTER_COOKIES_JSON`** : tableau JSON des cookies X (exporter depuis le navigateur, même format que `twitter_cookies` dans `credentials.json`).
+  - **`LLM_API_KEY`** : clé API Groq (ou autre).
+  - **`LLM_MODEL`** (optionnel) : ex. `llama-3.1-8b-instant`.
 
 ## Limites de session
 
