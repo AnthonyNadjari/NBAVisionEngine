@@ -34,6 +34,7 @@ The workflow needs **2 repository secrets**. Follow these steps exactly.
    Open **`credentials.json`**.  
    Find the part that says `"twitter_cookies":` followed by a **square bracket** `[`.  
    Copy **everything from that `[` to the matching `]`** at the end of the cookies array.  
+   If your export has `"domain": "x.com"` (no dot), that’s fine—the app normalizes it to `.x.com`.  
    So you copy only the array, e.g.:
    ```text
    [{"domain":".x.com","expirationDate":1806427706.885005,...},...]

@@ -8,10 +8,15 @@ from engine import run_session
 
 
 def main() -> int:
-    pw, browser, context, page = launch_and_auth()
-    if page is None:
-        print("ERR: Cookie invalid or login required. Set TWITTER_COOKIES_JSON.")
+    result = launch_and_auth()
+    if len(result) == 5 and result[0] is None:
+        reason = result[4]
+        if reason == "no_cookies":
+            print("ERR: No cookies. Set TWITTER_COOKIES_JSON (repo secret or env).")
+        else:
+            print("ERR: Cookies present but session invalid or expired. Re-export cookies from the browser where you're logged in to X.")
         return 1
+    pw, browser, context, page = result[0], result[1], result[2], result[3]
 
     try:
         log_data = run_session(page, context, browser=browser, playwright_instance=pw)

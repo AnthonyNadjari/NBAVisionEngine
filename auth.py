@@ -7,6 +7,18 @@ from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 from config import get_twitter_cookies_json, TWITTER_HOME_URL
 
 
+def _normalize_cookie_domain(domain: str | None) -> str:
+    """Use .x.com / .twitter.com so Playwright sends cookies to x.com."""
+    if not domain or not isinstance(domain, str):
+        return ".x.com"
+    d = domain.strip().lower()
+    if d in ("x.com", ".x.com") or d.endswith(".x.com"):
+        return ".x.com"
+    if d in ("twitter.com", ".twitter.com") or d.endswith(".twitter.com"):
+        return ".twitter.com"
+    return domain if domain.startswith(".") else "." + domain
+
+
 def parse_cookies(raw: str) -> list[dict]:
     """Parse TWITTER_COOKIES_JSON into list of cookie dicts. Normalize for Playwright (.x.com or .twitter.com)."""
     if not raw or raw.strip() in ("", "[]"):
@@ -20,7 +32,7 @@ def parse_cookies(raw: str) -> list[dict]:
         p = {
             "name": str(c["name"]),
             "value": str(c["value"]),
-            "domain": c.get("domain") or ".x.com",
+            "domain": _normalize_cookie_domain(c.get("domain")),
             "path": c.get("path") or "/",
         }
         if c.get("httpOnly") is not None:
@@ -40,7 +52,7 @@ def parse_cookies(raw: str) -> list[dict]:
     return out
 
 
-def launch_and_auth():
+def launch_and_auth() -> tuple:
     """
     Ordre strict (Section 3.2):
     1. launch headless chromium
@@ -48,12 +60,13 @@ def launch_and_auth():
     3. add_cookies
     4. new_page
     5. goto home
-    Returns (playwright, browser, context, page) or (None, None, None, None) if invalid.
+    Returns (playwright, browser, context, page) or (None, None, None, None).
+    When invalid, the fifth value is "no_cookies" or "session_invalid".
     """
     raw = get_twitter_cookies_json()
     cookies = parse_cookies(raw)
     if not cookies:
-        return None, None, None, None
+        return None, None, None, None, "no_cookies"
 
     pw = sync_playwright().start()
     browser: Browser = pw.chromium.launch(headless=True)
@@ -68,18 +81,17 @@ def launch_and_auth():
         if not avatar.is_visible(timeout=10000):
             browser.close()
             pw.stop()
-            return None, None, None, None
+            return None, None, None, None, "session_invalid"
     except Exception:
-        # Fallback: check for timeline or any logged-in indicator
         try:
             timeline = page.locator('[data-testid="primaryColumn"]').first
             if not timeline.is_visible(timeout=8000):
                 browser.close()
                 pw.stop()
-                return None, None, None, None
+                return None, None, None, None, "session_invalid"
         except Exception:
             browser.close()
             pw.stop()
-            return None, None, None, None
+            return None, None, None, None, "session_invalid"
 
     return pw, browser, context, page
