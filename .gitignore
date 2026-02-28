@@ -1,6 +1,9 @@
 .env
 credentials.json
 cookies.json
+browser_profile/
+.nbavision_run.lock
+nbavision_server.log
 __pycache__/
 *.pyc
 .venv/
