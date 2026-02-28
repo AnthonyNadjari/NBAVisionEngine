@@ -99,17 +99,6 @@
       <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
     </section>
 
-    <section class="card">
-      <button type="button" class="section-toggle" id="cookiesToggle" aria-expanded="false">How to export Twitter cookies</button>
-      <div id="cookiesSection" class="section-content">
-        <ol>
-          <li>Log in to <strong>Twitter (X)</strong> in Chrome or Edge.</li>
-          <li>Install <a href="https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn" target="_blank" rel="noopener">Cookie-Editor</a> or <a href="https://chromewebstore.google.com/detail/editthiscookie/fngmhnnpilhplaeedifhccceomclgfbg" target="_blank" rel="noopener">EditThisCookie</a>.</li>
-          <li>On x.com open the extension, Export as JSON (array).</li>
-          <li>Paste into <code>credentials.json</code> under <code>twitter_cookies</code> (project root).</li>
-        </ol>
-      </div>
-    </section>
   </div>
 
   <script>
@@ -144,8 +133,6 @@
       var triggerBtn = document.getElementById('triggerBtn');
       var triggerError = document.getElementById('triggerError');
       var triggerSuccess = document.getElementById('triggerSuccess');
-      var cookiesToggle = document.getElementById('cookiesToggle');
-      var cookiesSection = document.getElementById('cookiesSection');
 
       function setStatus(status, text, detailsHtml) {
         if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
@@ -170,7 +157,10 @@
           headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + getToken() }
         }, 15000)
           .then(function(res) {
-            if (!res.ok) throw new Error('API ' + res.status);
+            if (!res.ok) {
+              if (res.status === 401) throw new Error('Token missing or invalid. Open this page once with #ghp_YOUR_TOKEN in the URL.');
+              throw new Error('API ' + res.status);
+            }
             return res.json();
           })
           .then(function(data) {
@@ -231,12 +221,6 @@
             triggerError.style.display = 'block';
           })
           .finally(function() { triggerBtn.disabled = false; });
-      });
-
-      if (cookiesToggle && cookiesSection) cookiesToggle.addEventListener('click', function() {
-        var open = cookiesSection.classList.toggle('open');
-        cookiesToggle.classList.toggle('open', open);
-        cookiesToggle.setAttribute('aria-expanded', !!open);
       });
 
       (function init() {
