@@ -28,7 +28,7 @@ Tout se trouve dans **`credentials.json`** à la racine du repo (pas de variable
 }
 ```
 
-- **Cookies X** : export depuis le navigateur (Cookie-Editor / EditThisCookie) → tableau JSON dans `twitter_cookies`. Voir **[docs/COOKIES.md](docs/COOKIES.md)** pour le pas-à-pas.
+- **Cookies X** : export depuis le navigateur (Cookie-Editor / EditThisCookie) → tableau JSON dans `twitter_cookies`. Voir **[docs/SECRETS-SETUP.md](docs/SECRETS-SETUP.md)** pour GitHub Actions.
 - **LLM** : clé Groq (free tier, [console.groq.com](https://console.groq.com)) dans `llm_api_key`, optionnel `llm_model`.
 
 Les variables d’environnement (`TWITTER_COOKIES_JSON`, `LLM_API_KEY`, etc.) restent supportées en secours si le fichier n’est pas présent.
@@ -62,4 +62,3 @@ Une page de contrôle est fournie pour orchestrer le moteur et voir le statut en
 1. Activer GitHub Pages : **Settings → Pages → Source** = branch **main**, dossier **/docs** (ou **root** si vous déplacez `index.html` à la racine).
 2. Ouvrir `https://<votre-username>.github.io/<nom-du-repo>/` (ex. `https://nadja.github.io/NBAVisionEngine/`).
 3. Optionnel : saisir un **Personal Access Token** GitHub (scope `repo`) et l’enregistrer pour **déclencher le workflow** et **rafraîchir le statut** des runs depuis la page. Le token reste uniquement dans le navigateur (session).
-4. Voir aussi la section *How to export Twitter cookies* sur la page.

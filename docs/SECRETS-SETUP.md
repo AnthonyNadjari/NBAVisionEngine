@@ -2,6 +2,8 @@
 
 The workflow needs **2 repository secrets**. Follow these steps exactly.
 
+**Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.
+
 ---
 
 ## Step 1: Open the secrets page
