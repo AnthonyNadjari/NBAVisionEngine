@@ -86,6 +86,7 @@
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
       </div>
       <p id="statusError" class="error-msg" style="display: none;"></p>
+      <p id="tokenLink" class="help-text" style="display: none; margin-top: 0.75rem;"></p>
     </section>
 
     <section class="card">
@@ -133,6 +134,7 @@
       var triggerBtn = document.getElementById('triggerBtn');
       var triggerError = document.getElementById('triggerError');
       var triggerSuccess = document.getElementById('triggerSuccess');
+      var tokenLink = document.getElementById('tokenLink');
 
       function setStatus(status, text, detailsHtml) {
         if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
@@ -153,6 +155,7 @@
       function fetchStatus() {
         if (statusText) statusText.textContent = 'Loading…';
         if (statusError) { statusError.textContent = ''; statusError.style.display = 'none'; }
+        if (tokenLink) tokenLink.style.display = 'none';
         fetchWithTimeout(apiUrl('/actions/runs?per_page=5'), {
           headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + getToken() }
         }, 15000)
@@ -178,11 +181,17 @@
             setStatus(st, msg, '<a href="' + url + '" target="_blank" rel="noopener">View run on GitHub →</a>');
             if (r.status === 'queued' || r.status === 'in_progress') poll();
           })
+          .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
             setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : '');
             if (statusError) {
               statusError.textContent = err.message || 'Could not load runs.';
               statusError.style.display = 'block';
+            }
+            if (tokenLink && (err.message || '').indexOf('Token') !== -1) {
+              var base = window.location.origin + (window.location.pathname || '/');
+              tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#" id="tokenUrl">' + base + '#</a> (then paste your ghp_ token after the #)';
+              tokenLink.style.display = 'block';
             }
           });
       }
