@@ -154,14 +154,17 @@
         return fetch(url, opts).finally(function() { clearTimeout(t); });
       }
 
-      function showTokenHelp() {
+      function clearStoredToken() {
+        try { if (typeof sessionStorage !== 'undefined' && sessionStorage) sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
+      }
+      function showTokenHelp(msg) {
         if (statusError) {
-          statusError.textContent = 'Token missing or invalid. Open this page once with #ghp_YOUR_TOKEN in the URL.';
+          statusError.textContent = msg || 'Token missing or invalid.';
           statusError.style.display = 'block';
         }
         if (tokenLink) {
           var base = window.location.origin + (window.location.pathname || '/');
-          tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#">' + base + '#</a> (paste your ghp_ token after the #)';
+          tokenLink.innerHTML = 'Create a new token: <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">GitHub → Settings → Developer settings → Personal access tokens</a>. Scopes: <strong>repo</strong>, <strong>Actions: Read and write</strong>. Then open this page once with your token in the URL: <a href="' + base + '#">' + base + '#</a> (paste <code>ghp_...</code> after the #).';
           tokenLink.style.display = 'block';
         }
       }
@@ -194,7 +197,10 @@
         }, 8000)
           .then(function(res) {
             if (!res.ok) {
-              if (res.status === 401) throw new Error('Token missing or invalid.');
+              if (res.status === 401) {
+                clearStoredToken();
+                return res.json().then(function(j) { throw new Error(j.message || 'Bad credentials'); }).catch(function() { throw new Error('Bad credentials'); });
+              }
               throw new Error('API ' + res.status);
             }
             return res.json();
@@ -217,15 +223,10 @@
           .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
             setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : (err.message || ''));
-            if (statusError) {
-              statusError.textContent = err.message || 'Could not load runs.';
-              statusError.style.display = 'block';
-            }
-            if (tokenLink && (err.message || '').indexOf('Token') !== -1) {
-              var base = window.location.origin + (window.location.pathname || '/');
-              tokenLink.innerHTML = 'Open this link and add your token after the <code>#</code>: <a href="' + base + '#">' + base + '#</a>';
-              tokenLink.style.display = 'block';
-            }
+            var msg = err.message || 'Could not load runs.';
+            if (statusError) statusError.textContent = msg;
+            if (statusError) statusError.style.display = 'block';
+            if (msg.indexOf('Bad credentials') !== -1 || msg.indexOf('Token') !== -1) showTokenHelp(msg);
           })
           .finally(clearLoading);
       }
