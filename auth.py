@@ -69,29 +69,41 @@ def launch_and_auth() -> tuple:
         return None, None, None, None, "no_cookies"
 
     pw = sync_playwright().start()
-    browser: Browser = pw.chromium.launch(headless=True)
-    context: BrowserContext = browser.new_context()
+    browser: Browser = pw.chromium.launch(
+        headless=True,
+        args=["--disable-blink-features=AutomationControlled"],
+    )
+    context: BrowserContext = browser.new_context(
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        viewport={"width": 1280, "height": 720},
+        locale="en-US",
+    )
     context.add_cookies(cookies)
     page: Page = context.new_page()
-    page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
 
-    # Validation: vérifier présence élément DOM avatar (Section 3.2)
-    try:
-        avatar = page.locator('[data-testid="SideNav_AccountSwitcher_Button"]').first
-        if not avatar.is_visible(timeout=10000):
-            browser.close()
-            pw.stop()
-            return None, None, None, None, "session_invalid"
-    except Exception:
+    def _check_logged_in() -> bool:
+        try:
+            avatar = page.locator('[data-testid="SideNav_AccountSwitcher_Button"]').first
+            if avatar.is_visible(timeout=10000):
+                return True
+        except Exception:
+            pass
         try:
             timeline = page.locator('[data-testid="primaryColumn"]').first
-            if not timeline.is_visible(timeout=8000):
-                browser.close()
-                pw.stop()
-                return None, None, None, None, "session_invalid"
+            return timeline.is_visible(timeout=8000)
         except Exception:
-            browser.close()
-            pw.stop()
-            return None, None, None, None, "session_invalid"
+            return False
 
-    return pw, browser, context, page
+    page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+    if _check_logged_in():
+        return pw, browser, context, page
+
+    # One retry: first load from new IP can get a soft block; reload sometimes helps
+    page.reload(wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_timeout(2000)
+    if _check_logged_in():
+        return pw, browser, context, page
+
+    browser.close()
+    pw.stop()
+    return None, None, None, None, "session_invalid"

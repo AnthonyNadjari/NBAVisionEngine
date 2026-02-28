@@ -7,7 +7,7 @@ name: NBAVision Engine
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 14 * * *"
+    - cron: "0 14 * * 0"   # weekly Sunday 14:00 UTC (fewer cookie re-exports than daily)
 
 jobs:
   run:

@@ -4,6 +4,8 @@ The workflow needs **2 repository secrets**. Follow these steps exactly.
 
 **Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.
 
+**Session lifetime:** Runs from GitHub Actions use a datacenter IP; X often invalidates sessions after a while. Re-export cookies when you see "session invalid or expired". To re-export less often, run the workflow weekly (edit the cron in the workflow) or run the engine locally.
+
 ---
 
 ## Step 1: Open the secrets page

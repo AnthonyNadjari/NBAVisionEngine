@@ -45,6 +45,15 @@ Les variables d’environnement (`TWITTER_COOKIES_JSON`, `LLM_API_KEY`, etc.) re
   - **`LLM_API_KEY`** : clé API Groq (ou autre).
   - **`LLM_MODEL`** (optionnel) : ex. `llama-3.1-8b-instant`.
 
+## Durée de vie des cookies (GitHub Actions)
+
+Quand le workflow tourne sur GitHub Actions, l’IP est celle d’un datacenter. X/Twitter peut considérer la session comme suspecte et l’invalider après quelques runs, ce qui oblige à **ré-exporter les cookies** de temps en temps. Ce n’est pas un bug du moteur.
+
+**Pour limiter les ré-exports :**
+- **Réduire la fréquence** : passer le cron (dans `.github/workflows/nbavision.yml`) à une fois par semaine au lieu de tous les jours (ex. `cron: "0 14 * * 0"` = dimanche 14h).
+- **Lancer en local** : exécuter `python main.py` sur votre PC (même IP / même « appareil » qu’au moment de l’export) ; les cookies tiennent généralement plus longtemps.
+- Ré-exporter les cookies uniquement lorsque le workflow échoue avec *« Cookies present but session invalid or expired »*.
+
 ## Limites de session
 
 - Max 30 réponses par session, 1 par auteur.
