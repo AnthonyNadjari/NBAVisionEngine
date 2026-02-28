@@ -1,5 +1,5 @@
 # NBAVision Engine — GitHub Actions (Section 2.1)
-# Runtime max 6h, Python 3.11, Playwright Chromium, secrets: TWITTER_COOKIES_JSON, LLM_API_KEY
+# Runtime max 6h, Python 3.11, Playwright Chromium. Credentials from credentials.json in repo.
 
 name: NBAVision Engine
 
@@ -11,7 +11,7 @@ on:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # 24.04 breaks playwright install --with-deps (libasound2 renamed)
     timeout-minutes: 360  # 6 hours max (Section 2.1)
 
     steps:
@@ -31,9 +31,6 @@ jobs:
         run: playwright install --with-deps chromium
 
       - name: Run NBAVision Engine
-        env:
-          TWITTER_COOKIES_JSON: ${{ secrets.TWITTER_COOKIES_JSON }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: python main.py
 
       - name: Upload session logs
