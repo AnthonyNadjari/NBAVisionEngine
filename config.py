@@ -1,10 +1,32 @@
 """
 NBAVision Engine — Configuration centralisée (Spec Section 2, 4, 11).
+Credentials: credentials.json (or env vars).
 """
+import json
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Fichier credentials à la racine du projet (ou CWD)
+def _credentials_path() -> Path | None:
+    for base in (Path(__file__).resolve().parent, Path.cwd()):
+        p = base / "credentials.json"
+        if p.is_file():
+            return p
+    return None
+
+def _load_credentials() -> dict | None:
+    path = _credentials_path()
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 # Python 3.11 — runtime
 KEYWORDS = [
@@ -67,11 +89,14 @@ CYCLE_INTERVAL_JITTER_SEC = 30
 TWITTER_HOME_URL = "https://x.com/home"
 TWITTER_SEARCH_BASE = "https://x.com/search?q={query}&f=live"
 
-# Secrets (injected via env / GitHub Secrets, or from file for local)
+# Credentials: credentials.json (prioritaire) ou variables d'environnement
 def get_twitter_cookies_json() -> str:
     raw = os.getenv("TWITTER_COOKIES_JSON", "").strip()
     if raw and raw not in ("", "[]"):
         return raw
+    creds = _load_credentials()
+    if creds and isinstance(creds.get("twitter_cookies"), list):
+        return json.dumps(creds["twitter_cookies"], separators=(",", ":"))
     path = os.getenv("TWITTER_COOKIES_FILE", "cookies.json").strip()
     if path and os.path.isfile(path):
         with open(path, encoding="utf-8") as f:
@@ -80,8 +105,20 @@ def get_twitter_cookies_json() -> str:
 
 
 def get_llm_api_key() -> str:
-    return os.getenv("LLM_API_KEY", "").strip()
+    s = os.getenv("LLM_API_KEY", "").strip()
+    if s:
+        return s
+    creds = _load_credentials()
+    if creds and isinstance(creds.get("llm_api_key"), str):
+        return creds["llm_api_key"].strip()
+    return ""
 
 
 def get_llm_model() -> str:
-    return os.getenv("LLM_MODEL", "llama-3.1-8b-instant").strip()
+    s = os.getenv("LLM_MODEL", "").strip()
+    if s:
+        return s
+    creds = _load_credentials()
+    if creds and isinstance(creds.get("llm_model"), str):
+        return creds["llm_model"].strip()
+    return "llama-3.1-8b-instant"

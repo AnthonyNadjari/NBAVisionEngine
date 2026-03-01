@@ -2,42 +2,28 @@
 
 Moteur d'automatisation NBA sur X (Twitter) : trouve des tweets, répond avec des templates (ou IA si configuré). **100 % gratuit.**
 
----
-
-## Démarrage rapide (mode local)
-
-```powershell
-cd C:\Users\nadja\OneDrive\Bureau\code\NBAVisionEngine\NBAVisionEngine
-.\setup.bat
-.\login_once.bat      # Connexion X une fois
-.\run_server.bat     # Serveur webhook
-```
-
-Dans un second terminal : `cloudflared tunnel --url http://localhost:8000` (ou ngrok).
-
-Puis : `POST https://VOTRE_URL/trigger` avec header `X-API-KEY: <secret du .env>`.
+**Tout s’exécute sur GitHub** (pas sur votre PC). Une fois les secrets configurés, le moteur peut tourner chaque dimanche à 14h UTC ou être lancé à la main.
 
 ---
 
-## Tutoriel complet
+## Tutoriel (tout en un)
 
-→ **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — tout le détail étape par étape.
-
----
-
-## Modes d'exécution
-
-| Mode | Où | Cookies | Réponses |
-|------|-----|---------|----------|
-| **Local (webhook)** | Votre PC | Profil persistant (connexion 1×) | Templates |
-| **GitHub Actions** | Cloud | Export cookies → secret | Templates |
-
-Pas de Groq obligatoire — templates NBA par défaut.
+→ **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — où est le planning hebdo, configuration des secrets, Control Center, et comment lancer une exécution.
 
 ---
 
-## Liens utiles
+## En bref
+
+| Question | Réponse |
+|----------|--------|
+| Où est le planning hebdo ? | Fichier `.github/workflows/nbavision.yml` (cron dimanche 14h UTC). |
+| Ça tourne sur mon PC ? | **Non.** Sur les serveurs GitHub. |
+| À faire une fois | Ajouter le secret `TWITTER_COOKIES_JSON` (voir [docs/SECRETS-SETUP.md](docs/SECRETS-SETUP.md)). |
+
+---
+
+## Liens
 
 - [Tutoriel complet](docs/TUTORIAL.md)
 - [Secrets GitHub Actions](docs/SECRETS-SETUP.md)
-- [Webhook détaillé](docs/WEBHOOK-SETUP.md)
+- Control Center : ouvrir `docs/index.html` avec un token dans l’URL (`#ghp_...`) pour voir le statut et lancer une exécution.
