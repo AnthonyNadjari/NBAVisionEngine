@@ -48,6 +48,7 @@ STYLE RULES:
 * Avoid clichés.
 * No robotic phrasing.
 * No template repetition.
+* Keep replies direct and not too long; avoid stock phrases like "I'd argue", "speaks volumes", "suggests that".
 * Do not mirror tweet wording.
 * Provide ONE sharp insight only.
 * Vary structure.

@@ -41,10 +41,10 @@ KEYWORDS = [
     "NBA rumors",
 ]
 
-# Session limits (Section 11)
-MAX_REPLIES = 30
+# Session limits (Section 11) — higher throughput, shorter cycle, 5h run window
+MAX_REPLIES = 60
 MAX_REPLIES_PER_AUTHOR = 1
-CYCLE_INTERVAL_MINUTES = 5
+CYCLE_INTERVAL_MINUTES = 3
 MAX_CONSECUTIVE_ERRORS = 3
 MAX_POSTING_FAILURES = 2
 
@@ -57,8 +57,8 @@ MIN_TEXT_LENGTH = 20
 MAX_HASHTAGS = 3
 MAX_PROFILES_OPENED_PER_CYCLE = 10
 
-# Scoring (Section 6) — top N kept
-TOP_N_SCORED = 20
+# Scoring (Section 6) — top N kept (more candidates per cycle)
+TOP_N_SCORED = 28
 
 # LLM (Section 7)
 LLM_TIMEOUT_SECONDS = 20

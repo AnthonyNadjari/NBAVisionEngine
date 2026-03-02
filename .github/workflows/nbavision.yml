@@ -1,18 +1,20 @@
 # NBAVision Engine — GitHub Actions (Section 2.1)
-# Runtime max 6h, Python 3.11, Playwright Chromium.
+# Runtime max 5h, Python 3.11, Playwright Chromium.
 # Required: TWITTER_COOKIES_JSON. Optional: LLM_API_KEY (Groq), LLM_MODEL. Without LLM key: template replies.
+# Schedule: 9am and 4pm UK (09:00 and 16:00 UTC; in BST summer that’s 10am and 5pm UK).
 
 name: NBAVision Engine
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 14 * * 0"   # weekly Sunday 14:00 UTC (fewer cookie re-exports than daily)
+    - cron: "0 9 * * *"    # every day 09:00 UTC (9am UK winter)
+    - cron: "0 16 * * *"   # every day 16:00 UTC (4pm UK winter)
 
 jobs:
   run:
     runs-on: ubuntu-22.04  # 24.04 breaks playwright install --with-deps (libasound2 renamed)
-    timeout-minutes: 360
+    timeout-minutes: 300
 
     steps:
       - uses: actions/checkout@v4

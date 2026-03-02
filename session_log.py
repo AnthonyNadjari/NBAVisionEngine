@@ -37,6 +37,7 @@ def build_session_log(
     skip_reasons: dict,
     avg_response_length: float,
     avg_engagement_velocity: float,
+    replies_posted: list[dict],
 ) -> dict:
     return {
         "start_time": start_time,
@@ -50,4 +51,5 @@ def build_session_log(
         "skip_reasons": skip_reasons,
         "avg_response_length": round(avg_response_length, 2),
         "avg_engagement_velocity": round(avg_engagement_velocity, 2),
+        "replies_posted": replies_posted,
     }

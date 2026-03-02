@@ -38,6 +38,7 @@ def run_session(page, context, *, browser, playwright_instance):
     seen_tweet_ids = set()
     replied_author_count = {}
     session_replies = []
+    replies_posted = []  # for session log: { tweet_url, reply_text, posted_at }
     total_scraped = 0
     total_filtered = 0
     total_scored = 0
@@ -126,6 +127,11 @@ def run_session(page, context, *, browser, playwright_instance):
             total_replied += 1
             replied_author_count[author] = replied_author_count.get(author, 0) + 1
             session_replies.append(response)
+            replies_posted.append({
+                "tweet_url": tweet_url,
+                "reply_text": response,
+                "posted_at": datetime.now(timezone.utc).isoformat(),
+            })
             response_lengths.append(len(response))
             engagement_velocities.append(_engagement_velocity(tweet))
             consecutive_errors = 0
@@ -154,6 +160,7 @@ def run_session(page, context, *, browser, playwright_instance):
         skip_reasons=skip_reasons,
         avg_response_length=avg_response_length,
         avg_engagement_velocity=avg_engagement_velocity,
+        replies_posted=replies_posted,
     )
     write_session_log(log_data)
     return log_data

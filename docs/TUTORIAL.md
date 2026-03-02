@@ -1,14 +1,14 @@
 # NBAVision Engine — Tutorial (one path)
 
-Everything runs **on GitHub’s servers**, not on your PC. You only set up secrets once and optionally use the Control Center to see status and start runs manually.
+Everything runs **on GitHub’s servers**, not on your PC. You set up secrets once; the engine runs twice daily (9am and 4pm UK) or you trigger it manually from Actions. The GitHub Pages dashboard is **display-only** (no trigger).
 
 ---
 
-## 1. Where is the weekly schedule?
+## 1. Where is the schedule?
 
 - **File:** `.github/workflows/nbavision.yml`
-- **Line:** `cron: "0 14 * * 0"` → every **Sunday at 14:00 UTC**
-- **Where it runs:** On **GitHub’s machines** (Actions), **not on your computer**. Your PC can be off; the run still happens.
+- **Schedule:** Every day **09:00 UTC** and **16:00 UTC** (= 9am and 4pm UK in winter; in summer BST that’s 10am and 5pm UK).
+- **Where it runs:** On **GitHub’s machines** (Actions), **not on your computer**. Your PC can be off.
 
 ---
 
@@ -30,36 +30,34 @@ Optional: add `LLM_API_KEY` (Groq) for AI replies; without it, template replies 
 
 | How | Where |
 |-----|--------|
-| **Weekly** | Automatically every Sunday 14:00 UTC (see step 1). |
-| **Manual (GitHub)** | Repo → **Actions** → **NBAVision Engine** → **Run workflow** → **Run workflow**. |
-| **Manual (Control Center)** | Open Control Center once with a token (step 4), then use **Refresh status** and **Start engine run**. |
+| **Automatic** | Every day at 9am and 4pm UK (09:00 and 16:00 UTC). |
+| **Manual** | Repo → **Actions** → **NBAVision Engine** → **Run workflow** → **Run workflow**. |
 
-All of these run the **same workflow on GitHub**; nothing runs on your machine.
+Runs last up to **5 hours** and can post up to **60 replies** per run (config in `config.py`).
 
 ---
 
-## 4. Control Center (optional)
+## 4. Dashboard (display-only)
 
-The Control Center is a small web page that shows the latest run and lets you start a run without opening GitHub Actions.
+The GitHub Pages page is a **dashboard only**: it does **not** trigger runs. With a GitHub token in the URL it can show:
 
-1. **Get a GitHub token:** GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**. Give it at least the `repo` scope.
-2. **Open the Control Center** with the token in the URL so it can talk to GitHub:
-   - If you use **GitHub Pages**:  
-     `https://anthonynadjari.github.io/NBAVisionEngine/#ghp_YOUR_TOKEN_HERE`
-   - If you open the HTML file locally:  
-     `file:///C:/Users/nadja/.../docs/index.html#ghp_YOUR_TOKEN_HERE`
-3. **First time:** The page will store the token in the browser (sessionStorage) and use it for **Refresh status** and **Start engine run**.
-4. **Refresh status** → fetches the latest workflow run from GitHub.  
-5. **Start engine run** → triggers the same workflow as “Run workflow” in Actions.
+- **Live status** — Last workflow run (queued / in progress / completed / cancelled) and link to the run.
+- **Schedule** — 9am and 4pm UK; link to run manually from Actions.
+- **Last run summary** — If the last run has a session-logs artifact: scraped/replied/skipped counts, skip reasons, and the list of **tweets posted** (tweet link + reply text).
 
-If you see “Token missing or invalid”, open the page again with `#ghp_...` in the URL (step 2) and try again.
+1. **Get a token:** GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**. Give it at least the **repo** scope (read is enough).
+2. **Open the dashboard** with the token in the URL:  
+   `https://anthonynadjari.github.io/NBAVisionEngine/#ghp_YOUR_TOKEN_HERE`
+3. Click **Refresh status** to load the latest run and, when available, the last run summary and posted tweets.
+
+To **start a run**, use **Actions → NBAVision Engine → Run workflow** on GitHub; the dashboard does not have a trigger button.
 
 ---
 
 ## 5. See runs and logs
 
-- **On GitHub:** Repo → **Actions** → **NBAVision Engine** → click a run → view steps and **session-logs** artifact.
-- **In Control Center:** After **Refresh status**, the card shows the latest run and a link to that run on GitHub.
+- **On GitHub:** Repo → **Actions** → **NBAVision Engine** → click a run → view steps and download the **session-logs** artifact.
+- **On the dashboard:** After **Refresh status**, if the last run completed and uploaded artifacts, the “Last run summary” card shows counts and the list of posted tweets.
 
 ---
 
@@ -67,8 +65,9 @@ If you see “Token missing or invalid”, open the page again with `#ghp_...` i
 
 | Question | Answer |
 |----------|--------|
-| Where is the schedule? | `.github/workflows/nbavision.yml` — `cron: "0 14 * * 0"` (Sunday 14:00 UTC). |
-| Does it run on my PC? | **No.** It runs on GitHub’s servers. Your PC can be off. |
+| Where is the schedule? | `.github/workflows/nbavision.yml` — 09:00 and 16:00 UTC (9am / 4pm UK). |
+| Does it run on my PC? | **No.** It runs on GitHub’s servers. |
 | What do I do once? | Add the secret `TWITTER_COOKIES_JSON` (and optionally `LLM_API_KEY`). |
-| How do I run it manually? | GitHub Actions → Run workflow, or Control Center → Start engine run (after opening with token). |
+| How do I run it manually? | **Actions** → **NBAVision Engine** → **Run workflow**. |
+| Can the dashboard start a run? | **No.** Dashboard is display-only. |
 | More on secrets? | [docs/SECRETS-SETUP.md](SECRETS-SETUP.md) |

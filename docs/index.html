@@ -65,14 +65,18 @@
     .run-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
     .run-details a { color: var(--accent); }
     .error-msg { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
+    .reply-item { margin-bottom: 0.75rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.9rem; }
+    .reply-item a { color: var(--accent); }
+    .reply-text { color: var(--text); margin-top: 0.25rem; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <div class="court-bg"></div>
   <div class="container">
     <header>
       <h1 class="logo">NBAVision Engine</h1>
-      <p class="tagline">Control Center · Real-time</p>
+      <p class="tagline">Dashboard · Display only</p>
     </header>
 
     <section class="card">
@@ -90,14 +94,14 @@
     </section>
 
     <section class="card">
-      <h2 class="card-title">Trigger run</h2>
-      <div class="token-row">
-        <button type="button" class="btn btn-primary" id="triggerBtn">Start engine run</button>
-      </div>
-      <p class="help-text">Run can take up to 6 hours. Status updates above.</p>
-      <p class="help-text" style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.9;"><strong>What happens?</strong> Starts the NBAVision workflow on GitHub Actions: scrapes NBA tweets, picks the best, generates replies with AI, posts on X.</p>
-      <p id="triggerError" class="error-msg" style="display: none;"></p>
-      <p id="triggerSuccess" style="color: var(--success); font-size: 0.9rem; margin-top: 0.5rem; display: none;"></p>
+      <h2 class="card-title">Schedule</h2>
+      <p class="stat">Runs automatically every day at <strong>9am</strong> and <strong>4pm UK time</strong> (09:00 and 16:00 UTC). To run manually, go to <a href="https://github.com/AnthonyNadjari/NBAVisionEngine/actions" target="_blank" rel="noopener">Actions → NBAVision Engine → Run workflow</a>.</p>
+    </section>
+
+    <section class="card" id="summaryCard" style="display: none;">
+      <h2 class="card-title">Last run summary</h2>
+      <div id="summaryStats" class="stat" style="margin-bottom: 0.75rem;"></div>
+      <div id="repliesPosted" style="margin-top: 0.75rem;"></div>
     </section>
 
   </div>
@@ -133,10 +137,10 @@
       var runDetails = document.getElementById('runDetails');
       var statusError = document.getElementById('statusError');
       var refreshBtn = document.getElementById('refreshBtn');
-      var triggerBtn = document.getElementById('triggerBtn');
-      var triggerError = document.getElementById('triggerError');
-      var triggerSuccess = document.getElementById('triggerSuccess');
       var tokenLink = document.getElementById('tokenLink');
+      var summaryCard = document.getElementById('summaryCard');
+      var summaryStats = document.getElementById('summaryStats');
+      var repliesPosted = document.getElementById('repliesPosted');
 
       function setStatus(status, text, detailsHtml) {
         if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
@@ -219,6 +223,7 @@
             var runUrl = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
             setStatus(st, msg, '<a href="' + runUrl + '" target="_blank" rel="noopener">View run on GitHub →</a>');
             if (r.status === 'queued' || r.status === 'in_progress') poll();
+            if ((r.status === 'completed' || r.conclusion) && r.id) fetchRunSummary(r.id, token);
           })
           .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
@@ -240,36 +245,67 @@
       refreshBtn.addEventListener('click', function() {
         if (statusText) statusText.textContent = 'Loading…';
         if (statusError) statusError.style.display = 'none';
+        if (summaryCard) summaryCard.style.display = 'none';
         fetchStatus();
       });
 
-      triggerBtn.addEventListener('click', function() {
-        triggerError.style.display = 'none';
-        triggerSuccess.style.display = 'none';
-        triggerBtn.disabled = true;
-        fetch(apiUrl('/actions/workflows/' + WORKFLOW_FILE + '/dispatches'), {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + getToken(), 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ref: 'main' })
-        })
-          .then(function(res) {
-            if (res.status === 204) {
-              triggerSuccess.textContent = 'Run started. Status will update above.';
-              triggerSuccess.style.display = 'block';
-              setTimeout(fetchStatus, 1500);
-              poll();
-            } else return res.json().then(function(j) { throw new Error(j.message || 'Trigger failed'); });
+      function showSummary(data) {
+        if (!summaryCard || !summaryStats) return;
+        var lines = [];
+        lines.push('Scraped: ' + (data.total_scraped || 0) + ' · Filtered: ' + (data.total_filtered || 0) + ' · Replied: ' + (data.total_replied || 0) + ' · Skipped: ' + (data.total_skipped || 0));
+        if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
+        if (data.end_time) lines.push('Ended: ' + new Date(data.end_time).toLocaleString());
+        if (data.skip_reasons && Object.keys(data.skip_reasons).length) {
+          var parts = [];
+          for (var k in data.skip_reasons) parts.push(k + ': ' + data.skip_reasons[k]);
+          lines.push('Skip reasons: ' + parts.join(', '));
+        }
+        summaryStats.innerHTML = lines.join('<br>');
+        if (repliesPosted && data.replies_posted && data.replies_posted.length) {
+          var html = '<strong>Tweets posted (' + data.replies_posted.length + '):</strong>';
+          data.replies_posted.forEach(function(item) {
+            html += '<div class="reply-item"><a href="' + (item.tweet_url || '#') + '" target="_blank" rel="noopener">Tweet</a><div class="reply-text">' + (item.reply_text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+          });
+          repliesPosted.innerHTML = html;
+        } else if (repliesPosted) {
+          repliesPosted.innerHTML = '';
+        }
+        summaryCard.style.display = 'block';
+      }
+
+      function fetchRunSummary(runId, token) {
+        if (!runId || !token || !window.JSZip) return;
+        fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/artifacts'), {
+          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
+        }, 5000)
+          .then(function(res) { return res.ok ? res.json() : Promise.reject(new Error('Artifacts ' + res.status)); })
+          .then(function(data) {
+            var artifacts = (data && data.artifacts) || [];
+            var sessionLogs = artifacts.filter(function(a) { return (a.name || '') === 'session-logs'; })[0];
+            if (!sessionLogs || !sessionLogs.id) return;
+            return fetch(apiUrl('/actions/artifacts/' + sessionLogs.id + '/zip'), {
+              headers: { 'Authorization': 'Bearer ' + token },
+              redirect: 'follow'
+            }).then(function(zipRes) { return zipRes.ok ? zipRes.blob() : Promise.reject(new Error('Zip ' + zipRes.status)); });
           })
-          .catch(function(err) {
-            triggerError.textContent = err.message || 'Trigger failed';
-            triggerError.style.display = 'block';
+          .then(function(blob) {
+            return window.JSZip.loadAsync(blob).then(function(zip) {
+              var names = [];
+              zip.forEach(function(rel) {
+                var base = rel.split('/').pop();
+                if (/session_\d{8}_\d{6}\.json$/.test(base)) names.push(rel);
+              });
+              names.sort();
+              var latest = names[names.length - 1];
+              if (!latest) return;
+              return zip.file(latest).async('string').then(JSON.parse);
+            });
           })
-          .finally(function() { triggerBtn.disabled = false; });
-      });
+          .then(function(json) { if (json) showSummary(json); })
+          .catch(function() {});
+      }
 
       (function init() {
-        var t = getToken();
-        if (!t && triggerBtn) triggerBtn.disabled = true;
         if (statusText && !statusText.textContent) statusText.textContent = 'Loading…';
         fetchStatus();
       })();
