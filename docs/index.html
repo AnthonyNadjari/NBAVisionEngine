@@ -98,9 +98,10 @@
       <p class="stat">Runs automatically every day at <strong>9am</strong> and <strong>4pm UK time</strong> (09:00 and 16:00 UTC). To run manually, go to <a href="https://github.com/AnthonyNadjari/NBAVisionEngine/actions" target="_blank" rel="noopener">Actions → NBAVision Engine → Run workflow</a>.</p>
     </section>
 
-    <section class="card" id="summaryCard" style="display: none;">
+    <section class="card" id="summaryCard">
       <h2 class="card-title">Last run summary</h2>
       <div id="summaryStats" class="stat" style="margin-bottom: 0.75rem;"></div>
+      <div id="summaryNoData" class="stat" style="color: var(--text-muted); display: none;"></div>
       <div id="repliesPosted" style="margin-top: 0.75rem;"></div>
     </section>
 
@@ -140,6 +141,7 @@
       var tokenLink = document.getElementById('tokenLink');
       var summaryCard = document.getElementById('summaryCard');
       var summaryStats = document.getElementById('summaryStats');
+      var summaryNoData = document.getElementById('summaryNoData');
       var repliesPosted = document.getElementById('repliesPosted');
 
       function setStatus(status, text, detailsHtml) {
@@ -245,12 +247,23 @@
       refreshBtn.addEventListener('click', function() {
         if (statusText) statusText.textContent = 'Loading…';
         if (statusError) statusError.style.display = 'none';
-        if (summaryCard) summaryCard.style.display = 'none';
+        if (summaryNoData) { summaryNoData.style.display = 'none'; summaryNoData.textContent = ''; }
+        if (summaryStats) summaryStats.innerHTML = '';
+        if (repliesPosted) repliesPosted.innerHTML = '';
         fetchStatus();
       });
 
+      function showNoSummary(reason) {
+        if (!summaryNoData) return;
+        if (summaryStats) summaryStats.innerHTML = '';
+        if (repliesPosted) repliesPosted.innerHTML = '';
+        summaryNoData.textContent = reason || 'No session log for this run. Cancelled or timed-out runs don\'t upload logs. Stats and tweeted replies will appear here after a run that completes.';
+        summaryNoData.style.display = 'block';
+      }
+
       function showSummary(data) {
         if (!summaryCard || !summaryStats) return;
+        if (summaryNoData) summaryNoData.style.display = 'none';
         var lines = [];
         lines.push('Scraped: ' + (data.total_scraped || 0) + ' · Filtered: ' + (data.total_filtered || 0) + ' · Replied: ' + (data.total_replied || 0) + ' · Skipped: ' + (data.total_skipped || 0));
         if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
@@ -270,7 +283,6 @@
         } else if (repliesPosted) {
           repliesPosted.innerHTML = '';
         }
-        summaryCard.style.display = 'block';
       }
 
       function fetchRunSummary(runId, token) {
@@ -282,7 +294,7 @@
           .then(function(data) {
             var artifacts = (data && data.artifacts) || [];
             var sessionLogs = artifacts.filter(function(a) { return (a.name || '') === 'session-logs'; })[0];
-            if (!sessionLogs || !sessionLogs.id) return;
+            if (!sessionLogs || !sessionLogs.id) { showNoSummary('No session log for this run. Cancelled or timed-out runs don\'t upload logs. Stats and tweeted replies will appear here after a run that completes.'); return; }
             return fetch(apiUrl('/actions/artifacts/' + sessionLogs.id + '/zip'), {
               headers: { 'Authorization': 'Bearer ' + token },
               redirect: 'follow'
@@ -301,8 +313,8 @@
               return zip.file(latest).async('string').then(JSON.parse);
             });
           })
-          .then(function(json) { if (json) showSummary(json); })
-          .catch(function() {});
+          .then(function(json) { if (json) showSummary(json); else showNoSummary(); })
+          .catch(function() { showNoSummary(); });
       }
 
       (function init() {
