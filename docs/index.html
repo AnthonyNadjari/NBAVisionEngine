@@ -194,7 +194,7 @@
         if (!token) { setStatus('idle', ''); showTokenHelp(); return; }
 
         var url;
-        try { url = apiUrl('/actions/runs?per_page=5'); } catch (e) { setStatus('idle', ''); if (statusError) { statusError.textContent = 'Invalid repo config.'; statusError.style.display = 'block'; } return; }
+        try { url = apiUrl('/actions/runs?per_page=15'); } catch (e) { setStatus('idle', ''); if (statusError) { statusError.textContent = 'Invalid repo config.'; statusError.style.display = 'block'; } return; }
 
         loadingSafetyTimer = setTimeout(function() { loadingSafetyTimer = null; clearLoading(); }, 10000);
 
@@ -225,7 +225,7 @@
             var runUrl = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
             setStatus(st, msg, '<a href="' + runUrl + '" target="_blank" rel="noopener">View run on GitHub →</a>');
             if (r.status === 'queued' || r.status === 'in_progress') poll();
-            if ((r.status === 'completed' || r.conclusion) && r.id) fetchRunSummary(r.id, token);
+            tryFindLatestSummary(runs, token);
           })
           .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
@@ -261,10 +261,14 @@
         summaryNoData.style.display = 'block';
       }
 
-      function showSummary(data) {
+      function showSummary(data, runInfo) {
         if (!summaryCard || !summaryStats) return;
         if (summaryNoData) summaryNoData.style.display = 'none';
         var lines = [];
+        if (runInfo && (runInfo.runUrl || runInfo.createdAt)) {
+          var runLabel = runInfo.createdAt ? new Date(runInfo.createdAt).toLocaleString() : 'Run';
+          lines.push('<a href="' + (runInfo.runUrl || '#') + '" target="_blank" rel="noopener" style="color: var(--accent);">Data from run on ' + runLabel + '</a>');
+        }
         lines.push('Scraped: ' + (data.total_scraped || 0) + ' · Filtered: ' + (data.total_filtered || 0) + ' · Replied: ' + (data.total_replied || 0) + ' · Skipped: ' + (data.total_skipped || 0));
         if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
         if (data.end_time) lines.push('Ended: ' + new Date(data.end_time).toLocaleString());
@@ -285,22 +289,24 @@
         }
       }
 
-      function fetchRunSummary(runId, token) {
-        if (!runId || !token || !window.JSZip) return;
-        fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/artifacts'), {
+      function fetchRunSummary(runId, token, runInfo) {
+        if (!runId || !token || !window.JSZip) return Promise.resolve(null);
+        runInfo = runInfo || {};
+        return fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/artifacts'), {
           headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
         }, 5000)
           .then(function(res) { return res.ok ? res.json() : Promise.reject(new Error('Artifacts ' + res.status)); })
           .then(function(data) {
             var artifacts = (data && data.artifacts) || [];
             var sessionLogs = artifacts.filter(function(a) { return (a.name || '') === 'session-logs'; })[0];
-            if (!sessionLogs || !sessionLogs.id) { showNoSummary('No session log for this run. Cancelled or timed-out runs don\'t upload logs. Stats and tweeted replies will appear here after a run that completes.'); return; }
+            if (!sessionLogs || !sessionLogs.id) return null;
             return fetch(apiUrl('/actions/artifacts/' + sessionLogs.id + '/zip'), {
               headers: { 'Authorization': 'Bearer ' + token },
               redirect: 'follow'
             }).then(function(zipRes) { return zipRes.ok ? zipRes.blob() : Promise.reject(new Error('Zip ' + zipRes.status)); });
           })
           .then(function(blob) {
+            if (!blob) return null;
             return window.JSZip.loadAsync(blob).then(function(zip) {
               var names = [];
               zip.forEach(function(rel) {
@@ -309,12 +315,29 @@
               });
               names.sort();
               var latest = names[names.length - 1];
-              if (!latest) return;
+              if (!latest) return null;
               return zip.file(latest).async('string').then(JSON.parse);
             });
           })
-          .then(function(json) { if (json) showSummary(json); else showNoSummary(); })
-          .catch(function() { showNoSummary(); });
+          .then(function(json) { return json ? { json: json, runInfo: runInfo } : null; })
+          .catch(function() { return null; });
+      }
+
+      function tryFindLatestSummary(runs, token) {
+        var nbavisionRuns = (runs || []).filter(function(w) { return (w.path || w.name || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; });
+        if (nbavisionRuns.length === 0) { showNoSummary('No runs yet.'); return; }
+        function tryNext(i) {
+          if (i >= nbavisionRuns.length) {
+            showNoSummary('No session log in the last ' + nbavisionRuns.length + ' runs. Cancelled or timed-out runs don\'t upload logs. Stats and tweets will appear here after a run that completes.');
+            return;
+          }
+          var r = nbavisionRuns[i];
+          fetchRunSummary(r.id, token, { runUrl: r.html_url, createdAt: r.created_at }).then(function(result) {
+            if (result) showSummary(result.json, result.runInfo);
+            else tryNext(i + 1);
+          });
+        }
+        tryNext(0);
       }
 
       (function init() {
