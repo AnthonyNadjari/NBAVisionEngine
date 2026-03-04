@@ -68,6 +68,12 @@
     .reply-item { margin-bottom: 0.75rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.9rem; }
     .reply-item a { color: var(--accent); }
     .reply-text { color: var(--text); margin-top: 0.25rem; }
+    .live-steps { margin-top: 0.75rem; font-size: 0.9rem; }
+    .live-step { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; color: var(--text-muted); }
+    .live-step.done { color: var(--success); }
+    .live-step.active { color: var(--accent); font-weight: 500; }
+    .live-step-icon { flex-shrink: 0; width: 1.2em; }
+    .live-elapsed { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 </head>
@@ -86,6 +92,7 @@
         <span id="statusText" class="stat"></span>
       </div>
       <div id="runDetails" class="run-details" style="display: none;"></div>
+      <div id="liveProgress" class="live-steps" style="display: none;"></div>
       <div class="token-row">
         <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
       </div>
@@ -143,6 +150,7 @@
       var summaryStats = document.getElementById('summaryStats');
       var summaryNoData = document.getElementById('summaryNoData');
       var repliesPosted = document.getElementById('repliesPosted');
+      var liveProgress = document.getElementById('liveProgress');
 
       function setStatus(status, text, detailsHtml) {
         if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
@@ -224,7 +232,12 @@
             if (r.status === 'in_progress') msg += ' — running…';
             var runUrl = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
             setStatus(st, msg, '<a href="' + runUrl + '" target="_blank" rel="noopener">View run on GitHub →</a>');
-            if (r.status === 'queued' || r.status === 'in_progress') poll();
+            if (r.status === 'queued' || r.status === 'in_progress') {
+              poll();
+              fetchLiveProgress(r.id, r.created_at, token);
+            } else {
+              hideLiveProgress();
+            }
             tryFindLatestSummary(runs, token);
           })
           .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
@@ -242,6 +255,49 @@
       function poll() {
         if (pollTimer) clearTimeout(pollTimer);
         pollTimer = setTimeout(function() { pollTimer = null; fetchStatus(); }, 10000);
+      }
+
+      function hideLiveProgress() {
+        if (liveProgress) { liveProgress.innerHTML = ''; liveProgress.style.display = 'none'; }
+      }
+
+      function showLiveProgress(steps, runCreatedAt) {
+        if (!liveProgress) return;
+        var html = '';
+        steps.forEach(function(s) {
+          var name = (s.name || 'Step ' + (s.number || '')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var icon = '○';
+          var cls = 'live-step';
+          if (s.status === 'completed') { icon = '✓'; cls += ' done'; }
+          else if (s.status === 'in_progress') { icon = '▶'; cls += ' active'; }
+          html += '<div class="' + cls + '"><span class="live-step-icon">' + icon + '</span><span>' + name + '</span></div>';
+        });
+        if (runCreatedAt) {
+          var start = new Date(runCreatedAt).getTime();
+          var elapsed = Math.floor((Date.now() - start) / 60000);
+          var elapsedStr = elapsed < 60 ? elapsed + ' min' : Math.floor(elapsed / 60) + ' h ' + (elapsed % 60) + ' min';
+          html += '<div class="live-elapsed">Elapsed: ' + elapsedStr + '</div>';
+        }
+        liveProgress.innerHTML = html;
+        liveProgress.style.display = 'block';
+      }
+
+      function fetchLiveProgress(runId, runCreatedAt, token) {
+        if (!runId || !token || !liveProgress) return;
+        fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/jobs'), {
+          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
+        }, 8000)
+          .then(function(res) { return res.ok ? res.json() : Promise.reject(new Error('Jobs ' + res.status)); })
+          .then(function(data) {
+            var jobs = (data && data.jobs) || [];
+            var job = jobs[0] || jobs.find(function(j) { return (j.name || '').toLowerCase().indexOf('run') !== -1; });
+            var steps = (job && job.steps) || [];
+            if (steps.length) showLiveProgress(steps, runCreatedAt);
+            else if (runCreatedAt && (jobs.length === 0 || (job && job.status === 'queued'))) {
+              showLiveProgress([{ name: 'Waiting for runner…', status: 'in_progress', number: 0 }], runCreatedAt);
+            } else hideLiveProgress();
+          })
+          .catch(function() { hideLiveProgress(); });
       }
 
       refreshBtn.addEventListener('click', function() {
