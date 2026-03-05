@@ -2,9 +2,10 @@
 
 The workflow needs **1 required secret** (TWITTER_COOKIES_JSON). LLM_API_KEY is optional (templates used if not set).
 
-**Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.
+**Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.  
+**Or from a Netscape `cookies.txt`:** run `python scripts/netscape_cookies_to_json.py path/to/cookies.txt` and copy the printed JSON array into the secret (see Step 2 below).
 
-**Session lifetime:** Runs from GitHub Actions use a datacenter IP; X often invalidates sessions after a while. Re-export cookies when you see "session invalid or expired". To re-export less often, run the workflow weekly (edit the cron in the workflow) or run the engine locally.
+**Session lifetime:** Runs from GitHub Actions use a datacenter IP; X often invalidates sessions after a while. Re-export cookies when you see "session invalid or expired". Update the `TWITTER_COOKIES_JSON` secret with the new JSON, then trigger a run from Actions → NBAVision Engine → Run workflow.
 
 ---
 
@@ -22,8 +23,9 @@ The workflow needs **1 required secret** (TWITTER_COOKIES_JSON). LLM_API_KEY is 
 1. Click **New repository secret**.
 2. **Name** (exactly): `TWITTER_COOKIES_JSON`
 3. **Secret** (value):  
-   Export cookies from x.com (extension Cookie-Editor) → format JSON array.  
-   Or if you have `credentials.json`: copy only the array after `"twitter_cookies":` (from `[` to `]`).  
+   - **Cookie-Editor (x.com):** export as JSON array; copy only the `[...]` part.  
+   - **Netscape cookies.txt:** run `python scripts/netscape_cookies_to_json.py path/to/cookies.txt` and copy the printed JSON.  
+   - **From `credentials.json`**: copy only the array after `"twitter_cookies":` (from `[` to `]`).  
    If your export has `"domain": "x.com"` (no dot), that’s fine—the app normalizes it to `.x.com`.  
    So you copy only the array, e.g.:
    ```text
@@ -31,7 +33,7 @@ The workflow needs **1 required secret** (TWITTER_COOKIES_JSON). LLM_API_KEY is 
    ```
    - Do **not** include `"twitter_cookies":` — only the `[...]` part.
    - The copied value can be one long line (that’s fine).
-   - Paste that entire array into the **Secret** field.
+   - Paste that entire array into the **Secret** field, then save.
 4. Click **Add secret**.
 
 ---
@@ -69,7 +71,7 @@ Only if you want to override the default model:
 
 | Secret name            | Required | Where to get the value                                      |
 |------------------------|----------|--------------------------------------------------------------|
-| `TWITTER_COOKIES_JSON` | Yes      | Export cookies from x.com (Cookie-Editor) → only the `[...]` array |
+| `TWITTER_COOKIES_JSON` | Yes      | Cookie-Editor on x.com → `[...]` array, or `scripts/netscape_cookies_to_json.py cookies.txt` → copy output |
 | `LLM_API_KEY`          | No       | Groq API key (templates used if not set)                    |
 | `LLM_MODEL`            | No       | e.g. `llama-3.1-8b-instant`                                  |
 

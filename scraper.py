@@ -139,13 +139,12 @@ def scrape_keyword(page: Page, keyword: str) -> list[dict]:
     page.goto(url, wait_until="domcontentloaded", timeout=30000)
     _wait_random(SEARCH_WAIT_SEC_MIN, SEARCH_WAIT_SEC_MAX)
 
-    for _ in range(3):
+    for scroll_num in range(3):
         delta = random.randint(SCROLL_DELTA_MIN, SCROLL_DELTA_MAX)
         page.mouse.wheel(0, delta)
         _wait_random(SCROLL_WAIT_SEC_MIN, SCROLL_WAIT_SEC_MAX)
 
     tweets = extract_tweets_from_page(page)
-    # Section 13: DOM change → retry once
     if not tweets:
         _wait_random(2, 4)
         tweets = extract_tweets_from_page(page)
@@ -159,16 +158,23 @@ def scrape_all_keywords(page: Page, context) -> list[dict]:
     """
     seen_ids = set()
     all_tweets = []
-    for keyword in KEYWORDS:
+    for i, keyword in enumerate(KEYWORDS, 1):
         try:
+            print(f"    Keyword {i}/{len(KEYWORDS)}: {keyword!r}", flush=True)
             batch = scrape_keyword(page, keyword)
+            new_in_batch = sum(1 for t in batch if (t.get("tweet_id") or "") not in seen_ids)
             for t in batch:
                 tid = t.get("tweet_id")
                 if tid and tid not in seen_ids:
                     seen_ids.add(tid)
                     all_tweets.append(t)
-        except Exception:
+            print(f"      -> {len(batch)} tweets, {new_in_batch} new (total unique: {len(all_tweets)})", flush=True)
+        except Exception as ex:
+            print(f"      -> error: {ex}", flush=True)
             continue
 
+    print(f"    Fetching followers for up to {MAX_PROFILES_OPENED_PER_CYCLE} profiles...", flush=True)
     fetch_followers_for_tweets(page, context, all_tweets, MAX_PROFILES_OPENED_PER_CYCLE)
+    with_followers = sum(1 for t in all_tweets if t.get("followers") is not None)
+    print(f"    Scrape done: {len(all_tweets)} tweets ({with_followers} with follower count).", flush=True)
     return all_tweets

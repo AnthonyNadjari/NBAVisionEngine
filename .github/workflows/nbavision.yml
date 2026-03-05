@@ -15,6 +15,8 @@ jobs:
   run:
     runs-on: ubuntu-22.04  # 24.04 breaks playwright install --with-deps (libasound2 renamed)
     timeout-minutes: 300
+    permissions:
+      contents: write  # push run logs to repo
 
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +47,7 @@ jobs:
           TWITTER_COOKIES_JSON: ${{ secrets.TWITTER_COOKIES_JSON }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL || 'llama-3.1-8b-instant' }}
+          NBAVISION_RUN_ID: ${{ github.run_id }}
         run: python main.py
 
       - name: Upload session logs
@@ -54,3 +57,16 @@ jobs:
           name: session-logs
           path: logs/
           if-no-files-found: ignore
+
+      - name: Push run logs to repo
+        if: always()
+        run: |
+          if ls logs/*.json 1>/dev/null 2>&1; then
+            mkdir -p run_logs/${{ github.run_id }}
+            cp logs/*.json run_logs/${{ github.run_id }}/
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git pull --rebase origin ${{ github.ref_name }} 2>/dev/null || true
+            git add run_logs/
+            git diff --staged --quiet || (git commit -m "Run logs: ${{ github.run_id }}" && git push)
+          fi

@@ -173,14 +173,18 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
     if not api_key:
         # Template mode — no Groq, no credentials
         if _should_skip_template(tweet_text):
+            print("    LLM: template mode — skip (sensitive)", flush=True)
             return {"decision": "SKIP", "reason": "template_skip", "response": ""}
+        reply = random.choice(TEMPLATE_REPLIES)
+        print(f"    LLM: template reply ({len(reply)} chars)", flush=True)
         return {
             "decision": "REPLY",
             "reason": "template",
-            "response": random.choice(TEMPLATE_REPLIES),
+            "response": reply,
         }
 
     model = get_llm_model()
+    print(f"    LLM: calling Groq ({model})...", flush=True)
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -210,10 +214,17 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
             content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
             parsed = _extract_json(content)
             if parsed and isinstance(parsed.get("decision"), str):
+                dec = (parsed.get("decision") or "").upper()
+                reason = (parsed.get("reason") or "")[:80]
+                print(f"    LLM: {dec} — {reason}", flush=True)
                 return parsed
+            print("    LLM: invalid output -> SKIP", flush=True)
             return {"decision": "SKIP", "reason": "invalid_llm_output", "response": ""}
         except requests.Timeout:
             last_err = "timeout"
+            print(f"    LLM: timeout (attempt {attempt + 1}/{LLM_RETRY_MAX + 1})", flush=True)
         except Exception as e:
             last_err = str(e)
+            print(f"    LLM: error — {e}", flush=True)
+    print("    LLM: all attempts failed -> None", flush=True)
     return None

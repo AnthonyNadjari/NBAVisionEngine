@@ -38,8 +38,13 @@ def build_session_log(
     avg_response_length: float,
     avg_engagement_velocity: float,
     replies_posted: list[dict],
+    *,
+    run_id: str | None = None,
+    cycles: list[dict] | None = None,
+    events: list[dict] | None = None,
 ) -> dict:
-    return {
+    out = {
+        "run_id": run_id,
         "start_time": start_time,
         "end_time": end_time,
         "total_scraped": total_scraped,
@@ -53,3 +58,8 @@ def build_session_log(
         "avg_engagement_velocity": round(avg_engagement_velocity, 2),
         "replies_posted": replies_posted,
     }
+    if cycles is not None:
+        out["cycles"] = cycles
+    if events is not None:
+        out["events"] = events
+    return out

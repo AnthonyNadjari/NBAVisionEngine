@@ -1,6 +1,7 @@
 .env
 credentials.json
 cookies.json
+cookies_output.json
 browser_profile/
 .nbavision_run.lock
 nbavision_server.log

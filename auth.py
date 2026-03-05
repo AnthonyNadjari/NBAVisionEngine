@@ -67,8 +67,10 @@ def launch_and_auth() -> tuple:
     cookies = parse_cookies(raw)
     if not cookies:
         return None, None, None, None, "no_cookies"
+    print(f"Auth: Loaded {len(cookies)} cookies.", flush=True)
 
     pw = sync_playwright().start()
+    print("Auth: Launching headless Chromium...", flush=True)
     browser: Browser = pw.chromium.launch(
         headless=True,
         args=["--disable-blink-features=AutomationControlled"],
@@ -94,16 +96,20 @@ def launch_and_auth() -> tuple:
         except Exception:
             return False
 
+    print("Auth: Navigating to X home...", flush=True)
     page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
     if _check_logged_in():
+        print("Auth: Session valid (timeline/avatar visible).", flush=True)
         return pw, browser, context, page
 
-    # One retry: first load from new IP can get a soft block; reload sometimes helps
+    print("Auth: First load failed, retrying once...", flush=True)
     page.reload(wait_until="domcontentloaded", timeout=30000)
     page.wait_for_timeout(2000)
     if _check_logged_in():
+        print("Auth: Session valid after retry.", flush=True)
         return pw, browser, context, page
 
+    print("Auth: Session invalid or expired.", flush=True)
     browser.close()
     pw.stop()
     return None, None, None, None, "session_invalid"

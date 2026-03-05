@@ -33,14 +33,12 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
         page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
         time.sleep(random.uniform(3, 6))
 
-        # Reply button
         reply_btn = page.locator('[data-testid="reply"]').first
         if not reply_btn.is_visible(timeout=8000):
             return False, "reply_button_not_found"
         reply_btn.click()
         time.sleep(random.uniform(0.5, 1.0))
 
-        # Focus the reply composer (div with contenteditable or data-testid)
         editor = page.locator('[data-testid="tweetTextarea_0"]').first
         if editor.count() == 0:
             editor = page.locator('div[contenteditable="true"][role="textbox"]').first
@@ -49,12 +47,10 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
         editor.click()
         time.sleep(0.3)
 
-        # Type char by char
         for ch in reply_text:
             page.keyboard.type(ch, delay=random.randint(TYPING_DELAY_MS_MIN, TYPING_DELAY_MS_MAX))
         time.sleep(random.uniform(1, 2))
 
-        # Send
         send_btn = page.locator('[data-testid="tweetButton"]').first
         if not send_btn.is_visible(timeout=5000):
             return False, "send_button_not_found"
