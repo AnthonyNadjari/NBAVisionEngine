@@ -33,18 +33,72 @@ KEYWORDS = [
     "NBA",
     "Lakers",
     "Celtics",
+    "Warriors",
+    "Bucks",
+    "Suns",
+    "Nuggets",
+    "76ers",
+    "Heat",
+    "Knicks",
+    "Mavericks",
+    "Thunder",
+    "Cavaliers",
+    "Clippers",
+    "Grizzlies",
+    "Timberwolves",
+    "Pelicans",
+    "Kings",
+    "Pacers",
+    "Magic",
+    "Rockets",
+    "Spurs",
+    "Hawks",
+    "Bulls",
+    "Raptors",
+    "Hornets",
+    "Wizards",
+    "Pistons",
+    "Trail Blazers",
+    "Jazz",
     "LeBron",
     "Kevin Durant",
+    "Stephen Curry",
+    "Nikola Jokic",
+    "Giannis",
+    "Jayson Tatum",
+    "Joel Embiid",
+    "Luka Doncic",
+    "Anthony Edwards",
+    "Shai Gilgeous-Alexander",
+    "Victor Wembanyama",
+    "Ja Morant",
+    "Donovan Mitchell",
+    "Devin Booker",
+    "Damian Lillard",
+    "Jimmy Butler",
+    "Kawhi Leonard",
     "NBA trade",
     "NBA injury",
     "NBA playoffs",
     "NBA rumors",
+    "NBA finals",
+    "NBA draft",
+    "NBA All-Star",
+    "NBA score",
+    "NBA game",
+    "NBA highlights",
+    "NBA news",
+    "NBA tonight",
+    "NBA trade deadline",
+    "NBA free agency",
+    "NBA MVP",
+    "NBA standings",
 ]
 
 # Session limits (Section 11) — higher throughput, shorter cycle, 5h run window
 MAX_REPLIES = 60
 MAX_REPLIES_PER_AUTHOR = 1
-CYCLE_INTERVAL_MINUTES = 3
+CYCLE_INTERVAL_MINUTES = 1.5
 MAX_CONSECUTIVE_ERRORS = 3
 MAX_POSTING_FAILURES = 2
 
@@ -73,8 +127,8 @@ TFIDF_SIMILARITY_THRESHOLD = 0.7
 # Posting (Section 10)
 TYPING_DELAY_MS_MIN = 50
 TYPING_DELAY_MS_MAX = 120
-WAIT_BEFORE_NEXT_TWEET_SEC_MIN = 120
-WAIT_BEFORE_NEXT_TWEET_SEC_MAX = 360
+WAIT_BEFORE_NEXT_TWEET_SEC_MIN = 60
+WAIT_BEFORE_NEXT_TWEET_SEC_MAX = 180
 
 # Scraping delays (Section 4.3, 14)
 SEARCH_WAIT_SEC_MIN = 4
@@ -83,7 +137,7 @@ SCROLL_WAIT_SEC_MIN = 2
 SCROLL_WAIT_SEC_MAX = 4
 SCROLL_DELTA_MIN = 1200
 SCROLL_DELTA_MAX = 2000
-CYCLE_INTERVAL_JITTER_SEC = 30
+CYCLE_INTERVAL_JITTER_SEC = 20
 
 # X (Twitter) — use x.com so .x.com cookies are sent
 TWITTER_HOME_URL = "https://x.com/home"
