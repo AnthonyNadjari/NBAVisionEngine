@@ -139,9 +139,14 @@ SCROLL_DELTA_MIN = 1200
 SCROLL_DELTA_MAX = 2000
 CYCLE_INTERVAL_JITTER_SEC = 20
 
+# Scraping concurrency — parallel keyword workers (each has own browser context/page)
+CONCURRENT_SCRAPE_WORKERS = 6
+
 # X (Twitter) — use x.com so .x.com cookies are sent
 TWITTER_HOME_URL = "https://x.com/home"
 TWITTER_SEARCH_BASE = "https://x.com/search?q={query}&f=live"
+BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+BROWSER_VIEWPORT = {"width": 1280, "height": 720}
 
 # Credentials: credentials.json (prioritaire) ou variables d'environnement
 def get_twitter_cookies_json() -> str:

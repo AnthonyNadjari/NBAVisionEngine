@@ -4,7 +4,7 @@ NBAVision Engine — Authentification Twitter par cookies (Spec Section 3).
 import json
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
-from config import get_twitter_cookies_json, TWITTER_HOME_URL
+from config import get_twitter_cookies_json, TWITTER_HOME_URL, BROWSER_USER_AGENT, BROWSER_VIEWPORT
 
 
 def _normalize_cookie_domain(domain: str | None) -> str:
@@ -76,8 +76,8 @@ def launch_and_auth() -> tuple:
         args=["--disable-blink-features=AutomationControlled"],
     )
     context: BrowserContext = browser.new_context(
-        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        viewport={"width": 1280, "height": 720},
+        user_agent=BROWSER_USER_AGENT,
+        viewport=BROWSER_VIEWPORT,
         locale="en-US",
     )
     context.add_cookies(cookies)

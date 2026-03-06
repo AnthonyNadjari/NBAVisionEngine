@@ -4,6 +4,7 @@ NBAVision Engine — Scraping Twitter via Playwright DOM (Spec Section 4).
 import random
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import quote_plus
 
 from playwright.sync_api import Page
@@ -13,11 +14,14 @@ from config import (
     TWITTER_SEARCH_BASE,
     SEARCH_WAIT_SEC_MIN,
     SEARCH_WAIT_SEC_MAX,
-    SCROLL_WAIT_SEC_MIN,
-    SCROLL_WAIT_SEC_MAX,
     SCROLL_DELTA_MIN,
     SCROLL_DELTA_MAX,
+    SCROLL_WAIT_SEC_MIN,
+    SCROLL_WAIT_SEC_MAX,
     MAX_PROFILES_OPENED_PER_CYCLE,
+    CONCURRENT_SCRAPE_WORKERS,
+    BROWSER_USER_AGENT,
+    BROWSER_VIEWPORT,
 )
 
 
@@ -151,27 +155,85 @@ def scrape_keyword(page: Page, keyword: str) -> list[dict]:
     return tweets
 
 
-def scrape_all_keywords(page: Page, context) -> list[dict]:
-    """
-    Scrape all KEYWORDS, optionally fetch followers (with max_profiles limit).
-    Returns list of tweet dicts; duplicates by tweet_id are deduplicated (one entry per tweet).
-    """
-    seen_ids = set()
-    all_tweets = []
-    for i, keyword in enumerate(KEYWORDS, 1):
+def _scrape_keywords_chunk(worker_id: int, page: Page, keywords: list[str]) -> list[dict]:
+    """Scrape a chunk of keywords with a dedicated page (thread-safe). Returns flat list of tweet dicts."""
+    out = []
+    for keyword in keywords:
         try:
-            print(f"    Keyword {i}/{len(KEYWORDS)}: {keyword!r}", flush=True)
             batch = scrape_keyword(page, keyword)
-            new_in_batch = sum(1 for t in batch if (t.get("tweet_id") or "") not in seen_ids)
-            for t in batch:
-                tid = t.get("tweet_id")
-                if tid and tid not in seen_ids:
-                    seen_ids.add(tid)
-                    all_tweets.append(t)
-            print(f"      -> {len(batch)} tweets, {new_in_batch} new (total unique: {len(all_tweets)})", flush=True)
-        except Exception as ex:
-            print(f"      -> error: {ex}", flush=True)
+            out.extend(batch)
+        except Exception:
             continue
+    return out
+
+
+def scrape_all_keywords(browser, page: Page, context) -> list[dict]:
+    """
+    Scrape all KEYWORDS in parallel (CONCURRENT_SCRAPE_WORKERS threads), then fetch followers.
+    Returns list of tweet dicts; duplicates by tweet_id are deduplicated.
+    """
+    n_workers = min(CONCURRENT_SCRAPE_WORKERS, len(KEYWORDS), 8)  # cap at 8
+    if n_workers <= 1:
+        # Sequential fallback
+        seen_ids = set()
+        all_tweets = []
+        for i, keyword in enumerate(KEYWORDS, 1):
+            try:
+                print(f"    Keyword {i}/{len(KEYWORDS)}: {keyword!r}", flush=True)
+                batch = scrape_keyword(page, keyword)
+                for t in batch:
+                    tid = t.get("tweet_id")
+                    if tid and tid not in seen_ids:
+                        seen_ids.add(tid)
+                        all_tweets.append(t)
+            except Exception:
+                continue
+    else:
+        # Parallel: one context + page per worker, same cookies
+        cookies = context.cookies()
+        chunk_size = (len(KEYWORDS) + n_workers - 1) // n_workers
+        chunks = [
+            KEYWORDS[i : i + chunk_size]
+            for i in range(0, len(KEYWORDS), chunk_size)
+        ]
+        worker_contexts = []
+        worker_pages = []
+        for _ in range(len(chunks)):
+            ctx = browser.new_context(
+                user_agent=BROWSER_USER_AGENT,
+                viewport=BROWSER_VIEWPORT,
+                locale="en-US",
+            )
+            ctx.add_cookies(cookies)
+            worker_contexts.append(ctx)
+            worker_pages.append(ctx.new_page())
+
+        print(f"    Scraping {len(KEYWORDS)} keywords with {len(chunks)} workers...", flush=True)
+        all_tweets = []
+        seen_ids = set()
+        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+            futures = {
+                executor.submit(_scrape_keywords_chunk, i, worker_pages[i], chunks[i]): i
+                for i in range(len(chunks))
+            }
+            for future in as_completed(futures):
+                worker_id = futures[future]
+                try:
+                    batch = future.result()
+                    for t in batch:
+                        tid = t.get("tweet_id")
+                        if tid and tid not in seen_ids:
+                            seen_ids.add(tid)
+                            all_tweets.append(t)
+                except Exception as ex:
+                    print(f"      Worker {worker_id} error: {ex}", flush=True)
+
+        for ctx in worker_contexts:
+            try:
+                ctx.close()
+            except Exception:
+                pass
+        print(f"    Parallel scrape done: {len(all_tweets)} unique tweets.", flush=True)
 
     print(f"    Fetching followers for up to {MAX_PROFILES_OPENED_PER_CYCLE} profiles...", flush=True)
     fetch_followers_for_tweets(page, context, all_tweets, MAX_PROFILES_OPENED_PER_CYCLE)
