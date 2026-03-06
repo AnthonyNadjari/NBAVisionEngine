@@ -5,7 +5,7 @@ The workflow needs **1 required secret** (TWITTER_COOKIES_JSON). LLM_API_KEY is 
 **Cookie export:** Use a browser extension (e.g. [Cookie-Editor](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgpnkiidkbajdkebn), EditThisCookie) on x.com while logged in → Export as JSON array.  
 **Or from a Netscape `cookies.txt`:** run `python scripts/netscape_cookies_to_json.py path/to/cookies.txt` and copy the printed JSON array into the secret (see Step 2 below).
 
-**Session lifetime:** Runs from GitHub Actions use a datacenter IP; X often invalidates sessions after a while. Re-export cookies when you see "session invalid or expired". Update the `TWITTER_COOKIES_JSON` secret with the new JSON, then trigger a run from Actions → NBAVision Engine → Run workflow.
+**Session lifetime:** The workflow is set up to run on a **self-hosted runner** (your home PC) so X sees your residential IP and cookies last much longer. One-time setup: [Self-hosted runner (docs/SELF-HOSTED-RUNNER.md)](SELF-HOSTED-RUNNER.md). If you see "session invalid or expired", re-export cookies and update the `TWITTER_COOKIES_JSON` secret.
 
 ---
 

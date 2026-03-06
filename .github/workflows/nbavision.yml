@@ -13,10 +13,13 @@ on:
 
 jobs:
   run:
-    runs-on: ubuntu-22.04  # 24.04 breaks playwright install --with-deps (libasound2 renamed)
+    runs-on: self-hosted   # home PC = same IP as cookie export, sessions last longer (see docs/SELF-HOSTED-RUNNER.md)
     timeout-minutes: 300
     permissions:
       contents: write  # push run logs to repo
+    defaults:
+      run:
+        shell: bash        # on Windows runner: install Git for Windows so bash is available
 
     steps:
       - uses: actions/checkout@v4
