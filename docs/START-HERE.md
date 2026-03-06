@@ -10,7 +10,7 @@ One place. Where you are, what to do.
 |------|--------|------------|
 | **1. Runner on your PC** | You did this | You added a self-hosted runner, run `.\run.cmd` in `C:\actions-runner` so it listens. Leave that window open when you want runs to happen. |
 | **2. Cookie secret** | You did this | In GitHub: Settings → Secrets → `TWITTER_COOKIES_JSON` = your X cookies (export from same PC). |
-| **3. Run the bot** | You do this when you want a run | See below. |
+| **3. Run the bot** | Automatic or manual | Schedule runs at 9am and 4pm UK by itself. You only click “Run workflow” when you want an extra run. |
 
 ---
 
@@ -22,6 +22,19 @@ One place. Where you are, what to do.
 4. The run will appear in the list; click it to see live logs. It runs on your PC.
 
 Scheduled runs (9am and 4pm UK) use the same workflow; the runner must be on at those times.
+
+---
+
+## Start the runner with Windows (optional)
+
+So you don’t have to launch `run.cmd` by hand:
+
+1. Press **Windows + R**, type `shell:startup`, Enter.
+2. Right‑click in the folder → **New** → **Shortcut**.
+3. **Target:** `C:\Windows\System32\cmd.exe /c "cd /d C:\actions-runner && run.cmd"`
+4. Name it e.g. **GitHub Runner** → Finish.
+
+After that, the runner starts when you log in. A command window will stay open while it runs.
 
 ---
 
