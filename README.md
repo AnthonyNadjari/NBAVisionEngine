@@ -6,9 +6,11 @@ Moteur d'automatisation NBA sur X (Twitter) : trouve des tweets, répond avec de
 
 ---
 
-## Tutoriel (tout en un)
+## How to use (concise)
 
-→ **[docs/TUTORIAL.md](docs/TUTORIAL.md)** — planning, configuration des secrets, dashboard affichage seul, et comment lancer une exécution.
+→ **[docs/HOW-TO-USE.md](docs/HOW-TO-USE.md)** — one-time setup (runner + cookies), how to run, logs, refresh cookies.
+
+→ [docs/TUTORIAL.md](docs/TUTORIAL.md) — longer tutorial; [docs/SELF-HOSTED-RUNNER.md](docs/SELF-HOSTED-RUNNER.md) — runner setup.
 
 ---
 
