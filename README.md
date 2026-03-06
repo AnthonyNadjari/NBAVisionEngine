@@ -1,33 +1,18 @@
 # NBAVision Engine
 
-Moteur d'automatisation NBA sur X (Twitter) : trouve des tweets, répond avec des templates (ou IA si configuré). **100 % gratuit.**
-
-**Tout s’exécute sur GitHub** (via un runner sur votre PC). Une fois le runner et les secrets configurés, le moteur tourne deux fois par jour (9h et 16h UK) ou peut être lancé à la main depuis Actions.
+NBA bot on X: finds tweets by keyword, replies (templates or LLM). Runs on **your PC** via a GitHub Actions self-hosted runner.
 
 ---
 
-## How to use (concise)
+## Start here
 
-→ **[docs/HOW-TO-USE.md](docs/HOW-TO-USE.md)** — one-time setup (runner + cookies), how to run, logs, refresh cookies.
-
-→ [docs/TUTORIAL.md](docs/TUTORIAL.md) — longer tutorial; [docs/SELF-HOSTED-RUNNER.md](docs/SELF-HOSTED-RUNNER.md) — runner setup.
+**[docs/START-HERE.md](docs/START-HERE.md)** — where you stand, how to run, what to fix. One page.
 
 ---
 
-## En bref
+## Run a job
 
-| Question | Réponse |
-|----------|--------|
-| Où est le planning ? | Fichier `.github/workflows/nbavision.yml` (cron 9h et 16h UK = 09:00 et 16:00 UTC). |
-| Ça tourne sur mon PC ? | **Oui.** Runner auto-hébergé (une fois configuré) pour que les cookies X restent valides. Voir [docs/SELF-HOSTED-RUNNER.md](docs/SELF-HOSTED-RUNNER.md). |
-| À faire une fois | 1) Configurer le runner auto-hébergé. 2) Ajouter le secret `TWITTER_COOKIES_JSON` ([docs/SECRETS-SETUP.md](docs/SECRETS-SETUP.md)). |
-| Lancer à la main ? | Repo → **Actions** → **NBAVision Engine** → **Run workflow**. |
+1. On your PC: runner window open (`C:\actions-runner` → `.\run.cmd`).
+2. GitHub → **Actions** → **NBAVision Engine** → **Run workflow** (branch: main) → green **Run workflow**.
 
----
-
-## Liens
-
-- [Tutoriel complet](docs/TUTORIAL.md)
-- [Runner auto-hébergé (setup une fois)](docs/SELF-HOSTED-RUNNER.md)
-- [Secrets GitHub Actions](docs/SECRETS-SETUP.md)
-- **Dashboard (affichage seul)** : [GitHub Pages](https://anthonynadjari.github.io/NBAVisionEngine/) — ouvrir la page avec un token dans l’URL (`#ghp_...`) pour voir le dernier run, les stats et les tweets postés.
+That’s it.
