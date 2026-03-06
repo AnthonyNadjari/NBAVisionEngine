@@ -47,5 +47,6 @@ After that, the runner starts when you log in. A command window will stay open w
 
 ## More detail (only if you need it)
 
+- **What we built and why:** [PROJECT.md](PROJECT.md)
 - **Runner setup from scratch:** [SELF-HOSTED-RUNNER.md](SELF-HOSTED-RUNNER.md)
 - **Secrets (cookies, LLM key):** [SECRETS-SETUP.md](SECRETS-SETUP.md)

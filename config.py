@@ -139,9 +139,6 @@ SCROLL_DELTA_MIN = 1200
 SCROLL_DELTA_MAX = 2000
 CYCLE_INTERVAL_JITTER_SEC = 20
 
-# Scraping concurrency — parallel keyword workers (each has own browser context/page)
-CONCURRENT_SCRAPE_WORKERS = 6
-
 # X (Twitter) — use x.com so .x.com cookies are sent
 TWITTER_HOME_URL = "https://x.com/home"
 TWITTER_SEARCH_BASE = "https://x.com/search?q={query}&f=live"
