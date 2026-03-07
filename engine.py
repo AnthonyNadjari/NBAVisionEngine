@@ -1,10 +1,11 @@
 """
 NBAVision Engine — Orchestration: scrape -> filter -> score -> LLM -> validate -> post.
-Respects session limits, logging, and error handling (Sections 11-15).
+Batches LLM calls concurrently for speed.
 """
 import os
 import random
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from filter_tweets import filter_tweets, minutes_since_post
 from scorer import rank_and_top
@@ -23,6 +24,8 @@ from config import (
     MAX_POSTING_FAILURES,
     DRY_RUN,
 )
+
+LLM_BATCH_SIZE = 8
 
 SESSION_HEALTH_CHECK_INTERVAL = 5
 
@@ -89,7 +92,7 @@ def run_session(page, context, *, browser, playwright_instance):
         print(f"[Cycle {cycle_index}] Scraping...", flush=True)
         try:
             from scraper import scrape_all_keywords
-            raw = scrape_all_keywords(page, cycle_index=cycle_index)
+            raw = scrape_all_keywords(page, context, cycle_index=cycle_index)
             total_scraped += len(raw)
             events.append(_event("scrape_done", {"raw_count": len(raw)}))
             consecutive_errors = max(0, consecutive_errors - 1)
@@ -130,8 +133,10 @@ def run_session(page, context, *, browser, playwright_instance):
         top_preview = [f"@{t.get('username')}(L{t.get('likes') or 0})" for t in top[:5]]
         print(f"[Cycle {cycle_index}] Top {len(top)} to evaluate: {', '.join(top_preview)}{'...' if len(top) > 5 else ''}", flush=True)
 
+        # Filter candidates (author limit, already seen)
+        candidates = []
         for tweet in top:
-            if total_replied >= MAX_REPLIES:
+            if len(candidates) + total_replied >= MAX_REPLIES + 10:
                 break
             tweet_id = tweet.get("tweet_id")
             author = tweet.get("username") or ""
@@ -140,19 +145,43 @@ def run_session(page, context, *, browser, playwright_instance):
                 skip_reasons["max_per_author"] = skip_reasons.get("max_per_author", 0) + 1
                 events.append(_event("skip", {"tweet_id": tweet_id, "reason": "max_per_author", "author": author}))
                 continue
-
-            tweet_url = f"https://x.com/{author}/status/{tweet_id}"
             seen_tweet_ids.add(tweet_id)
+            candidates.append(tweet)
 
-            total_llm_calls += 1
-            print(f"  Evaluating @{author} ({tweet_id})...", flush=True)
+        # Batch LLM calls concurrently (I/O-bound HTTP, safe to thread)
+        llm_results: dict[str, dict | None] = {}
+        for batch_start in range(0, len(candidates), LLM_BATCH_SIZE):
+            batch = candidates[batch_start:batch_start + LLM_BATCH_SIZE]
+            total_llm_calls += len(batch)
+            print(f"  LLM batch: {len(batch)} tweets ({batch_start + 1}-{batch_start + len(batch)}/{len(candidates)})", flush=True)
+
+            with ThreadPoolExecutor(max_workers=LLM_BATCH_SIZE) as executor:
+                futures = {
+                    executor.submit(call_llm, t.get("text") or "", t.get("username") or ""): t.get("tweet_id")
+                    for t in batch
+                }
+                for future in as_completed(futures):
+                    tid = futures[future]
+                    try:
+                        llm_results[tid] = future.result()
+                    except Exception:
+                        llm_results[tid] = None
+
+        # Process results in order and post
+        for tweet in candidates:
+            if total_replied >= MAX_REPLIES:
+                break
+            tweet_id = tweet.get("tweet_id")
+            author = tweet.get("username") or ""
+            tweet_url = f"https://x.com/{author}/status/{tweet_id}"
+
             events.append(_event("llm_call", {"tweet_id": tweet_id, "author": author}))
-            llm_result = call_llm(tweet.get("text") or "", author)
+            llm_result = llm_results.get(tweet_id)
             if llm_result is None:
                 total_skipped += 1
                 skip_reasons["llm_timeout"] = skip_reasons.get("llm_timeout", 0) + 1
                 consecutive_errors += 1
-                print("  Skip: LLM timeout", flush=True)
+                print(f"  @{author}: Skip (LLM timeout)", flush=True)
                 events.append(_event("llm_skip", {"tweet_id": tweet_id, "reason": "llm_timeout"}))
                 continue
             decision = (llm_result.get("decision") or "").upper()
@@ -163,22 +192,22 @@ def run_session(page, context, *, browser, playwright_instance):
                 total_skipped += 1
                 skip_reasons[reason or "skip"] = skip_reasons.get(reason or "skip", 0) + 1
                 consecutive_errors = 0
-                print(f"  Skip: {decision} — {reason or '(no reason)'}", flush=True)
+                print(f"  @{author}: Skip — {reason or '(no reason)'}", flush=True)
                 events.append(_event("llm_skip", {"tweet_id": tweet_id, "reason": reason or "skip", "decision": decision}))
                 continue
 
             response = response[:180].strip()
             reply_preview = (response[:60] + "...") if len(response) > 60 else response
-            print(f"  Reply ({len(response)} chars): {reply_preview!r}", flush=True)
+            print(f"  @{author}: Reply ({len(response)} chars): {reply_preview!r}", flush=True)
             valid, fail_reason = validate_reply(response, session_replies)
             if not valid:
                 total_skipped += 1
                 skip_reasons[fail_reason or "validation"] = skip_reasons.get(fail_reason or "validation", 0) + 1
-                print(f"  Skip: validation — {fail_reason}", flush=True)
+                print(f"  @{author}: Skip (validation — {fail_reason})", flush=True)
                 events.append(_event("validation_fail", {"tweet_id": tweet_id, "reason": fail_reason}))
                 continue
 
-            print(f"  Posting reply to {tweet_url}...", flush=True)
+            print(f"  Posting to {tweet_url}...", flush=True)
             events.append(_event("post_attempt", {"tweet_id": tweet_id, "tweet_url": tweet_url}))
             success, err = post_reply(page, tweet_url, response)
             if not success:
@@ -207,7 +236,7 @@ def run_session(page, context, *, browser, playwright_instance):
             engagement_velocities.append(_engagement_velocity(tweet))
             consecutive_errors = 0
             posting_failures = 0
-            print(f"  Posted to {tweet_url}. Session: {total_replied}/{MAX_REPLIES} replies", flush=True)
+            print(f"  Posted. Session: {total_replied}/{MAX_REPLIES}", flush=True)
             events.append(_event("post_ok", {"tweet_id": tweet_id, "tweet_url": tweet_url, "reply_length": len(response)}))
 
             wait_before_next_tweet()
@@ -221,9 +250,9 @@ def run_session(page, context, *, browser, playwright_instance):
         cycle_index += 1
         if total_replied < MAX_REPLIES:
             interval_sec = CYCLE_INTERVAL_MINUTES * 60 + random.uniform(-CYCLE_INTERVAL_JITTER_SEC, CYCLE_INTERVAL_JITTER_SEC)
-            mins = max(1, int(interval_sec / 60))
-            print(f"[Cycle {cycle_index}] Sleeping ~{mins} min until next cycle", flush=True)
-            time.sleep(max(60, interval_sec))
+            interval_sec = max(15, interval_sec)
+            print(f"[Cycle {cycle_index}] Sleeping {int(interval_sec)}s until next cycle", flush=True)
+            time.sleep(interval_sec)
 
     end_time = datetime.now(timezone.utc).isoformat()
     events.append(_event("session_end", {"total_replied": total_replied, "total_skipped": total_skipped}))
