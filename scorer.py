@@ -9,7 +9,7 @@ from config import TOP_N_SCORED
 def compute_score(tweet: dict) -> float:
     """
     engagement_velocity = (likes + 2*replies + 2*retweets) / max(minutes, 1)
-    freshness_score = 1 - (minutes / 120)   (matched to MAX_MINUTES_SINCE_POST)
+    freshness_score = 1 - (minutes / 180)   (matched to MAX_MINUTES_SINCE_POST)
     text_quality = log(len(text) + 1) — prefer meatier tweets
     score = 0.6 * velocity + 0.25 * freshness + 0.15 * text_quality
     """
@@ -20,7 +20,7 @@ def compute_score(tweet: dict) -> float:
     text = (tweet.get("text") or "").strip()
 
     engagement_velocity = (likes + 2 * replies + 2 * retweets) / max(minutes, 1)
-    freshness_score = max(0.0, min(1.0, 1.0 - (minutes / 120.0)))
+    freshness_score = max(0.0, min(1.0, 1.0 - (minutes / 180.0)))
     text_quality = math.log(max(len(text), 1) + 1)
 
     score = (

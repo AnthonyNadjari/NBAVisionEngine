@@ -1,6 +1,6 @@
 """
 NBAVision Engine — Posting replies (Spec Section 10).
-Uses clipboard paste for speed and reliability (people paste text all the time).
+Uses Playwright insert_text for instant text entry (works in headless).
 """
 import random
 import time
@@ -35,12 +35,9 @@ def wait_before_next_tweet() -> None:
     time.sleep(delay)
 
 
-def _paste_text(page: Page, text: str) -> None:
-    """Paste text via clipboard — fast and natural (people copy-paste constantly)."""
-    page.evaluate("text => navigator.clipboard.writeText(text)", text)
-    time.sleep(random.uniform(0.1, 0.3))
-    modifier = "Meta" if page.evaluate("() => navigator.platform.startsWith('Mac')") else "Control"
-    page.keyboard.press(f"{modifier}+v")
+def _insert_text(page: Page, text: str) -> None:
+    """Insert text instantly via Playwright's input method (works in headless)."""
+    page.keyboard.insert_text(text)
     time.sleep(random.uniform(0.3, 0.6))
 
 
@@ -76,7 +73,7 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
         editor.click()
         time.sleep(random.uniform(0.2, 0.4))
 
-        _paste_text(page, reply_text)
+        _insert_text(page, reply_text)
         time.sleep(random.uniform(0.5, 1.0))
 
         send_btn = page.locator('[data-testid="tweetButton"]').first

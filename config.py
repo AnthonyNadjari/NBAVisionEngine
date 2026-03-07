@@ -106,11 +106,11 @@ MAX_REPLIES = 60
 MAX_REPLIES_PER_AUTHOR = 1
 CYCLE_INTERVAL_MINUTES = 0.5
 MAX_CONSECUTIVE_ERRORS = 5
-MAX_POSTING_FAILURES = 3
+MAX_POSTING_FAILURES = 5
 
-# Filtering — engagement-based (no follower check to avoid slow profile tab opens)
-MAX_MINUTES_SINCE_POST = 120
-MIN_LIKES = 2
+# Filtering — engagement-based (scoring handles quality ranking)
+MAX_MINUTES_SINCE_POST = 180
+MIN_LIKES = 0
 MIN_TEXT_LENGTH = 10
 MAX_HASHTAGS = 5
 
