@@ -43,6 +43,7 @@ def filter_tweet(
         MAX_MINUTES_SINCE_POST,
         MIN_LIKES,
         MIN_TEXT_LENGTH,
+        MIN_TEXT_LENGTH_IF_MEDIA,
         MAX_HASHTAGS,
     )
 
@@ -60,6 +61,8 @@ def filter_tweet(
     text = (tweet.get("text") or "").strip()
     if len(text) < MIN_TEXT_LENGTH:
         return False, "text_too_short"
+    if tweet.get("has_media") and len(text) < MIN_TEXT_LENGTH_IF_MEDIA:
+        return False, "image_caption_too_short"
     if _is_mostly_url(text):
         return False, "only_url"
     if _count_hashtags(text) > MAX_HASHTAGS:

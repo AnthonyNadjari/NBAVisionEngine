@@ -91,6 +91,13 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
             time_el = art.locator("time").first
             timestamp = _safe_locator_attr(time_el, "datetime") or ""
 
+            has_media = False
+            try:
+                media_loc = art.locator('[data-testid="tweetPhoto"], [data-testid="videoPlayer"]')
+                has_media = media_loc.count() > 0
+            except Exception:
+                pass
+
             if tweet_id and username:
                 tweets.append({
                     "tweet_id": tweet_id,
@@ -101,6 +108,7 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
                     "retweets": retweets,
                     "timestamp": timestamp,
                     "followers": None,
+                    "has_media": has_media,
                 })
         except Exception:
             continue

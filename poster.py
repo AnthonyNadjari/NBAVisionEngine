@@ -44,7 +44,7 @@ def _insert_text(page: Page, text: str) -> None:
 def _do_post(page: Page, tweet_url: str, reply_text: str, tweet_id: str) -> tuple[bool, str | None]:
     """Single attempt: goto, click reply, type, send. Returns (success, error)."""
     page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
-    time.sleep(random.uniform(4, 6))
+    time.sleep(random.uniform(3, 5))
 
     reply_btn = page.locator('[data-testid="reply"]').first
     if not reply_btn.is_visible(timeout=15000):
