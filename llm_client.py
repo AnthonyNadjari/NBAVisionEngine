@@ -1,11 +1,12 @@
 """
 NBAVision Engine — Reply generation.
 Without LLM API key: uses template replies (no Groq, no setup).
-With LLM API key: uses Groq for AI-generated replies.
+With LLM API key: uses Groq for AI-generated replies. Handles 429 with backoff.
 """
 import json
 import random
 import re
+import time
 import requests
 from config import get_llm_api_key, get_llm_model, LLM_TIMEOUT_SECONDS, LLM_RETRY_MAX
 
@@ -143,8 +144,11 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
     }
     user_content = f"Tweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
 
+    max_attempts = LLM_RETRY_MAX + 1
+    max_429_backoffs = 3
     last_err = None
-    for attempt in range(LLM_RETRY_MAX + 1):
+
+    for attempt in range(max_attempts + max_429_backoffs):
         try:
             r = requests.post(
                 url,
@@ -160,6 +164,23 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
                 },
                 timeout=LLM_TIMEOUT_SECONDS,
             )
+
+            if r.status_code == 429:
+                retry_after = 30
+                if "Retry-After" in r.headers:
+                    try:
+                        retry_after = int(r.headers["Retry-After"])
+                    except ValueError:
+                        pass
+                retry_after = min(90, max(retry_after, 25))
+                if attempt < max_attempts + max_429_backoffs - 1:
+                    print(f"    LLM: 429 rate limit — waiting {retry_after}s then retry", flush=True)
+                    time.sleep(retry_after)
+                    continue
+                last_err = "429 Too Many Requests"
+                print(f"    LLM: 429 — all backoffs exhausted", flush=True)
+                break
+
             r.raise_for_status()
             data = r.json()
             content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
@@ -173,9 +194,25 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
             return {"decision": "SKIP", "reason": "invalid_llm_output", "response": ""}
         except requests.Timeout:
             last_err = "timeout"
-            print(f"    LLM: timeout (attempt {attempt + 1}/{LLM_RETRY_MAX + 1})", flush=True)
+            print(f"    LLM: timeout (attempt {attempt + 1})", flush=True)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429:
+                retry_after = 35
+                if e.response.headers.get("Retry-After"):
+                    try:
+                        retry_after = int(e.response.headers["Retry-After"])
+                    except ValueError:
+                        pass
+                retry_after = min(90, max(retry_after, 25))
+                if attempt < max_attempts + max_429_backoffs - 1:
+                    print(f"    LLM: 429 — waiting {retry_after}s then retry", flush=True)
+                    time.sleep(retry_after)
+                    continue
+            last_err = str(e)
+            print(f"    LLM: error — {e}", flush=True)
         except Exception as e:
             last_err = str(e)
             print(f"    LLM: error — {e}", flush=True)
+
     print("    LLM: all attempts failed -> None", flush=True)
     return None

@@ -25,7 +25,8 @@ from config import (
     DRY_RUN,
 )
 
-LLM_BATCH_SIZE = 8
+LLM_BATCH_SIZE = 3
+LLM_BATCH_DELAY_SEC = (2.0, 4.0)
 
 SESSION_HEALTH_CHECK_INTERVAL = 5
 
@@ -148,9 +149,12 @@ def run_session(page, context, *, browser, playwright_instance):
             seen_tweet_ids.add(tweet_id)
             candidates.append(tweet)
 
-        # Batch LLM calls concurrently (I/O-bound HTTP, safe to thread)
+        # Batch LLM calls concurrently (small batches to avoid Groq 429)
         llm_results: dict[str, dict | None] = {}
         for batch_start in range(0, len(candidates), LLM_BATCH_SIZE):
+            if batch_start > 0:
+                delay = random.uniform(*LLM_BATCH_DELAY_SEC)
+                time.sleep(delay)
             batch = candidates[batch_start:batch_start + LLM_BATCH_SIZE]
             total_llm_calls += len(batch)
             print(f"  LLM batch: {len(batch)} tweets ({batch_start + 1}-{batch_start + len(batch)}/{len(candidates)})", flush=True)

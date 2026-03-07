@@ -41,10 +41,47 @@ def _insert_text(page: Page, text: str) -> None:
     time.sleep(random.uniform(0.3, 0.6))
 
 
+def _do_post(page: Page, tweet_url: str, reply_text: str, tweet_id: str) -> tuple[bool, str | None]:
+    """Single attempt: goto, click reply, type, send. Returns (success, error)."""
+    page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
+    time.sleep(random.uniform(4, 6))
+
+    reply_btn = page.locator('[data-testid="reply"]').first
+    if not reply_btn.is_visible(timeout=15000):
+        return False, "reply_button_not_found"
+    reply_btn.click()
+    time.sleep(random.uniform(0.5, 1.0))
+
+    editor = page.locator('[data-testid="tweetTextarea_0"]').first
+    if editor.count() == 0:
+        editor = page.locator('div[contenteditable="true"][role="textbox"]').first
+    if not editor.count() or not editor.is_visible(timeout=8000):
+        return False, "reply_box_not_found"
+    editor.click()
+    time.sleep(random.uniform(0.2, 0.4))
+
+    _insert_text(page, reply_text)
+    time.sleep(random.uniform(0.5, 1.0))
+
+    send_btn = page.locator('[data-testid="tweetButton"]').first
+    if not send_btn.is_visible(timeout=5000):
+        return False, "send_button_not_found"
+    send_btn.click()
+
+    time.sleep(random.uniform(2, 3))
+    try:
+        toast = page.locator('[data-testid="toast"]').first
+        if toast.is_visible(timeout=3000):
+            print(f"  Post confirmed (toast visible)", flush=True)
+    except Exception:
+        pass
+    return True, None
+
+
 def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str | None]:
     """
-    Navigate to tweet, click reply, paste text, send.
-    In DRY_RUN mode: navigates and validates the page but does not type or send.
+    Navigate to tweet, click reply, insert text, send. Retries once on reply_button_not_found.
+    In DRY_RUN mode: does not post.
     Returns (success, error_message).
     """
     tweet_id = tweet_url.rstrip("/").split("/")[-1]
@@ -54,44 +91,14 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
         return True, None
 
     try:
-        page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
-        time.sleep(random.uniform(2, 4))
-
-        reply_btn = page.locator('[data-testid="reply"]').first
-        if not reply_btn.is_visible(timeout=8000):
-            _screenshot_on_error(page, f"no_reply_btn_{tweet_id}")
-            return False, "reply_button_not_found"
-        reply_btn.click()
-        time.sleep(random.uniform(0.4, 0.8))
-
-        editor = page.locator('[data-testid="tweetTextarea_0"]').first
-        if editor.count() == 0:
-            editor = page.locator('div[contenteditable="true"][role="textbox"]').first
-        if not editor.count() or not editor.is_visible(timeout=5000):
-            _screenshot_on_error(page, f"no_editor_{tweet_id}")
-            return False, "reply_box_not_found"
-        editor.click()
-        time.sleep(random.uniform(0.2, 0.4))
-
-        _insert_text(page, reply_text)
-        time.sleep(random.uniform(0.5, 1.0))
-
-        send_btn = page.locator('[data-testid="tweetButton"]').first
-        if not send_btn.is_visible(timeout=5000):
-            _screenshot_on_error(page, f"no_send_btn_{tweet_id}")
-            return False, "send_button_not_found"
-        send_btn.click()
-
-        time.sleep(random.uniform(2, 3))
-
-        try:
-            toast = page.locator('[data-testid="toast"]').first
-            if toast.is_visible(timeout=3000):
-                print(f"  Post confirmed (toast visible)", flush=True)
-        except Exception:
-            pass
-
-        return True, None
+        success, err = _do_post(page, tweet_url, reply_text, tweet_id)
+        if not success and err == "reply_button_not_found":
+            print(f"  Retrying once after reply_button_not_found...", flush=True)
+            time.sleep(random.uniform(3, 5))
+            success, err = _do_post(page, tweet_url, reply_text, tweet_id)
+        if not success:
+            _screenshot_on_error(page, f"{err}_{tweet_id}")
+        return success, err
     except Exception as e:
         _screenshot_on_error(page, f"exception_{tweet_id}")
         return False, str(e)
