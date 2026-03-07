@@ -26,6 +26,9 @@ jobs:
     timeout-minutes: 180
     permissions:
       contents: write
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: "1"
     defaults:
       run:
         shell: bash

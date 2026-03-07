@@ -2,9 +2,17 @@
 NBAVision Engine — Main entry point.
 Authentication via cookies, then engine execution.
 """
+import io
 import os
 import sys
 import traceback
+
+# Force UTF-8 output so emoji/unicode in tweets and LLM replies don't crash
+# the process on Windows consoles that default to cp1252/charmap.
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+
 from auth import launch_and_auth, save_session_state
 from engine import run_session
 from notify import notify_auth_failure
