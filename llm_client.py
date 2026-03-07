@@ -149,7 +149,7 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
     user_content = f"Tweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
 
     max_attempts = LLM_RETRY_MAX + 1
-    max_429_backoffs = 3
+    max_429_backoffs = 5
     last_err = None
 
     for attempt in range(max_attempts + max_429_backoffs):
@@ -170,13 +170,13 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
             )
 
             if r.status_code == 429:
-                retry_after = 30
+                retry_after = 60
                 if "Retry-After" in r.headers:
                     try:
                         retry_after = int(r.headers["Retry-After"])
                     except ValueError:
                         pass
-                retry_after = min(90, max(retry_after, 25))
+                retry_after = min(120, max(retry_after, 60))
                 if attempt < max_attempts + max_429_backoffs - 1:
                     print(f"    LLM: 429 rate limit — waiting {retry_after}s then retry", flush=True)
                     time.sleep(retry_after)
@@ -201,13 +201,13 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
             print(f"    LLM: timeout (attempt {attempt + 1})", flush=True)
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 429:
-                retry_after = 35
+                retry_after = 60
                 if e.response.headers.get("Retry-After"):
                     try:
                         retry_after = int(e.response.headers["Retry-After"])
                     except ValueError:
                         pass
-                retry_after = min(90, max(retry_after, 25))
+                retry_after = min(120, max(retry_after, 60))
                 if attempt < max_attempts + max_429_backoffs - 1:
                     print(f"    LLM: 429 — waiting {retry_after}s then retry", flush=True)
                     time.sleep(retry_after)

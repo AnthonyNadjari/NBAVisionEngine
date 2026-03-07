@@ -5,7 +5,6 @@ Batches LLM calls concurrently for speed.
 import os
 import random
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from filter_tweets import filter_tweets, minutes_since_post
 from scorer import rank_and_top
@@ -25,8 +24,8 @@ from config import (
     DRY_RUN,
 )
 
-LLM_BATCH_SIZE = 4
-LLM_BATCH_DELAY_SEC = (1.2, 2.5)
+# Serial LLM calls with delay to stay under Groq rate limit (avoids 429)
+LLM_SERIAL_DELAY_SEC = (3.0, 4.5)
 
 SESSION_HEALTH_CHECK_INTERVAL = 5
 
@@ -149,27 +148,17 @@ def run_session(page, context, *, browser, playwright_instance):
             seen_tweet_ids.add(tweet_id)
             candidates.append(tweet)
 
-        # Batch LLM calls concurrently (small batches to avoid Groq 429)
+        # Serial LLM calls with delay to avoid Groq 429 (no concurrent requests)
         llm_results: dict[str, dict | None] = {}
-        for batch_start in range(0, len(candidates), LLM_BATCH_SIZE):
-            if batch_start > 0:
-                delay = random.uniform(*LLM_BATCH_DELAY_SEC)
-                time.sleep(delay)
-            batch = candidates[batch_start:batch_start + LLM_BATCH_SIZE]
-            total_llm_calls += len(batch)
-            print(f"  LLM batch: {len(batch)} tweets ({batch_start + 1}-{batch_start + len(batch)}/{len(candidates)})", flush=True)
-
-            with ThreadPoolExecutor(max_workers=LLM_BATCH_SIZE) as executor:
-                futures = {
-                    executor.submit(call_llm, t.get("text") or "", t.get("username") or ""): t.get("tweet_id")
-                    for t in batch
-                }
-                for future in as_completed(futures):
-                    tid = futures[future]
-                    try:
-                        llm_results[tid] = future.result()
-                    except Exception:
-                        llm_results[tid] = None
+        for i, tweet in enumerate(candidates):
+            if i > 0:
+                time.sleep(random.uniform(*LLM_SERIAL_DELAY_SEC))
+            total_llm_calls += 1
+            tid = tweet.get("tweet_id")
+            try:
+                llm_results[tid] = call_llm(tweet.get("text") or "", tweet.get("username") or "")
+            except Exception:
+                llm_results[tid] = None
 
         # Process results in order and post
         for tweet in candidates:

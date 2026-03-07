@@ -24,8 +24,8 @@ from config import (
 )
 
 HIGH_PRIORITY_KEYWORDS = {
-    "NBA", "NBA playoffs", "NBA trade", "NBA game", "NBA tonight",
-    "LeBron", "Stephen Curry", "Luka Doncic", "Victor Wembanyama",
+    "NBA", "NBA playoffs", "NBA trade", "NBA game", "NBA tonight", "NBA finals",
+    "basketball", "LeBron", "Stephen Curry", "Luka Doncic", "Victor Wembanyama",
 }
 
 PARALLEL_TABS = 3

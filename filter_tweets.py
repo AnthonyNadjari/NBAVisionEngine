@@ -45,6 +45,7 @@ def filter_tweet(
         MIN_TEXT_LENGTH,
         MIN_TEXT_LENGTH_IF_MEDIA,
         MAX_HASHTAGS,
+        NBA_TEXT_KEYWORDS,
     )
 
     tid = tweet.get("tweet_id")
@@ -61,6 +62,9 @@ def filter_tweet(
     text = (tweet.get("text") or "").strip()
     if len(text) < MIN_TEXT_LENGTH:
         return False, "text_too_short"
+    text_lower = text.lower()
+    if not any(kw in text_lower for kw in NBA_TEXT_KEYWORDS):
+        return False, "no_nba_keyword"
     if tweet.get("has_media") and len(text) < MIN_TEXT_LENGTH_IF_MEDIA:
         return False, "image_caption_too_short"
     if _is_mostly_url(text):
