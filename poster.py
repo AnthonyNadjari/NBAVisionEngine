@@ -1,13 +1,12 @@
 """
 NBAVision Engine — Posting replies (Spec Section 10).
+Uses clipboard paste for speed and reliability (people paste text all the time).
 """
 import random
 import time
 from pathlib import Path
 from playwright.sync_api import Page
 from config import (
-    TYPING_DELAY_MS_MIN,
-    TYPING_DELAY_MS_MAX,
     WAIT_BEFORE_NEXT_TWEET_SEC_MIN,
     WAIT_BEFORE_NEXT_TWEET_SEC_MAX,
     DRY_RUN,
@@ -32,15 +31,23 @@ def _screenshot_on_error(page: Page, label: str) -> None:
 
 
 def wait_before_next_tweet() -> None:
-    delay = random.randint(WAIT_BEFORE_NEXT_TWEET_SEC_MIN, WAIT_BEFORE_NEXT_TWEET_SEC_MAX)
+    delay = random.uniform(WAIT_BEFORE_NEXT_TWEET_SEC_MIN, WAIT_BEFORE_NEXT_TWEET_SEC_MAX)
     time.sleep(delay)
+
+
+def _paste_text(page: Page, text: str) -> None:
+    """Paste text via clipboard — fast and natural (people copy-paste constantly)."""
+    page.evaluate("text => navigator.clipboard.writeText(text)", text)
+    time.sleep(random.uniform(0.1, 0.3))
+    modifier = "Meta" if page.evaluate("() => navigator.platform.startsWith('Mac')") else "Control"
+    page.keyboard.press(f"{modifier}+v")
+    time.sleep(random.uniform(0.3, 0.6))
 
 
 def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str | None]:
     """
-    Navigate to tweet, click reply, type char-by-char, send.
+    Navigate to tweet, click reply, paste text, send.
     In DRY_RUN mode: navigates and validates the page but does not type or send.
-    After posting, checks for a toast/confirmation to verify the reply went through.
     Returns (success, error_message).
     """
     tweet_id = tweet_url.rstrip("/").split("/")[-1]
@@ -51,14 +58,14 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
 
     try:
         page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
-        time.sleep(random.uniform(3, 6))
+        time.sleep(random.uniform(2, 4))
 
         reply_btn = page.locator('[data-testid="reply"]').first
         if not reply_btn.is_visible(timeout=8000):
             _screenshot_on_error(page, f"no_reply_btn_{tweet_id}")
             return False, "reply_button_not_found"
         reply_btn.click()
-        time.sleep(random.uniform(0.5, 1.0))
+        time.sleep(random.uniform(0.4, 0.8))
 
         editor = page.locator('[data-testid="tweetTextarea_0"]').first
         if editor.count() == 0:
@@ -67,11 +74,10 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
             _screenshot_on_error(page, f"no_editor_{tweet_id}")
             return False, "reply_box_not_found"
         editor.click()
-        time.sleep(0.3)
+        time.sleep(random.uniform(0.2, 0.4))
 
-        for ch in reply_text:
-            page.keyboard.type(ch, delay=random.randint(TYPING_DELAY_MS_MIN, TYPING_DELAY_MS_MAX))
-        time.sleep(random.uniform(1, 2))
+        _paste_text(page, reply_text)
+        time.sleep(random.uniform(0.5, 1.0))
 
         send_btn = page.locator('[data-testid="tweetButton"]').first
         if not send_btn.is_visible(timeout=5000):
@@ -79,10 +85,8 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
             return False, "send_button_not_found"
         send_btn.click()
 
-        # Wait and check for confirmation toast or that the reply box disappears
-        time.sleep(random.uniform(2, 4))
+        time.sleep(random.uniform(2, 3))
 
-        # X shows a toast with "Your post was sent" on success
         try:
             toast = page.locator('[data-testid="toast"]').first
             if toast.is_visible(timeout=3000):

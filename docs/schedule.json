@@ -1,0 +1,7 @@
+{
+  "schedules": [
+    {"time": "09:00", "enabled": true},
+    {"time": "16:00", "enabled": true}
+  ],
+  "timezone": "UTC"
+}

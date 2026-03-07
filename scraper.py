@@ -21,7 +21,7 @@ from config import (
     SCROLL_DELTA_MAX,
     SCROLL_WAIT_SEC_MIN,
     SCROLL_WAIT_SEC_MAX,
-    MAX_PROFILES_OPENED_PER_CYCLE,
+    SCROLL_COUNT,
 )
 
 # These broad keywords tend to yield more and better results
@@ -110,48 +110,6 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
     return tweets
 
 
-def fetch_followers_for_tweets(
-    page: Page,
-    context,
-    tweets: list[dict],
-    max_profiles: int = MAX_PROFILES_OPENED_PER_CYCLE,
-) -> None:
-    """Open profile in new tab, get followers, close tab. Mutates tweets[].followers."""
-    base_url = "https://x.com"
-    opened = 0
-    for t in tweets:
-        if opened >= max_profiles:
-            break
-        if t.get("followers") is not None:
-            continue
-        username = t.get("username")
-        if not username:
-            continue
-        profile_url = f"{base_url}/{username}"
-        new_page = None
-        try:
-            new_page = context.new_page()
-            new_page.goto(profile_url, wait_until="domcontentloaded", timeout=15000)
-            _wait_random(1.5, 3.0)
-            follower_el = new_page.locator('a[href*="/verified_followers"]').first
-            if not follower_el.count():
-                follower_el = new_page.locator('a[href*="/followers"]').first
-            if follower_el.count():
-                aria = follower_el.get_attribute("aria-label")
-                t["followers"] = _parse_int_from_aria(aria)
-            else:
-                t["followers"] = 0
-            opened += 1
-        except Exception:
-            t["followers"] = 0
-        finally:
-            if new_page:
-                try:
-                    new_page.close()
-                except Exception:
-                    pass
-
-
 def scrape_keyword(page: Page, keyword: str) -> list[dict]:
     """Navigate to search URL, scroll, extract tweets."""
     query = quote_plus(keyword)
@@ -164,7 +122,7 @@ def scrape_keyword(page: Page, keyword: str) -> list[dict]:
 
     _wait_random(SEARCH_WAIT_SEC_MIN, SEARCH_WAIT_SEC_MAX)
 
-    for _ in range(3):
+    for _ in range(SCROLL_COUNT):
         delta = random.randint(SCROLL_DELTA_MIN, SCROLL_DELTA_MAX)
         page.mouse.wheel(0, delta)
         _wait_random(SCROLL_WAIT_SEC_MIN, SCROLL_WAIT_SEC_MAX)
@@ -199,10 +157,10 @@ def _select_keywords(cycle_index: int) -> list[str]:
     return result
 
 
-def scrape_all_keywords(browser, page: Page, context, cycle_index: int = 0) -> list[dict]:
+def scrape_all_keywords(page: Page, cycle_index: int = 0) -> list[dict]:
     """
-    Sample a smart subset of KEYWORDS, scrape them sequentially,
-    then fetch followers. Deduplicates by tweet_id.
+    Sample a smart subset of KEYWORDS, scrape them sequentially.
+    Deduplicates by tweet_id.
     """
     keywords = _select_keywords(cycle_index)
     print(f"    Scraping {len(keywords)} keywords this cycle", flush=True)
@@ -240,8 +198,5 @@ def scrape_all_keywords(browser, page: Page, context, cycle_index: int = 0) -> l
     if empty_count > len(keywords) * 0.7:
         print(f"    WARNING: {empty_count}/{len(keywords)} keywords returned 0 tweets — session may be degraded", flush=True)
 
-    print(f"    Fetching followers for up to {MAX_PROFILES_OPENED_PER_CYCLE} profiles...", flush=True)
-    fetch_followers_for_tweets(page, context, all_tweets, MAX_PROFILES_OPENED_PER_CYCLE)
-    with_followers = sum(1 for t in all_tweets if t.get("followers") is not None)
-    print(f"    Scrape done: {len(all_tweets)} tweets ({with_followers} with follower count).", flush=True)
+    print(f"    Scrape done: {len(all_tweets)} unique tweets.", flush=True)
     return all_tweets

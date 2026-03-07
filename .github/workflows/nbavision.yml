@@ -16,9 +16,6 @@ on:
         options:
           - "false"
           - "true"
-  schedule:
-    - cron: "0 9 * * *"
-    - cron: "0 16 * * *"
 
 jobs:
   run:

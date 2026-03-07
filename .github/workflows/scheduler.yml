@@ -1,0 +1,63 @@
+name: Scheduler
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: docs/schedule.json
+          sparse-checkout-cone-mode: false
+
+      - name: Check schedule and trigger
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -f docs/schedule.json ]; then
+            echo "No schedule.json found, skipping"
+            exit 0
+          fi
+
+          CURRENT_HOUR=$(date -u +"%H")
+          CURRENT_MIN=$(date -u +"%M")
+          CURRENT_TOTAL=$((10#$CURRENT_HOUR * 60 + 10#$CURRENT_MIN))
+
+          echo "Current UTC time: ${CURRENT_HOUR}:${CURRENT_MIN} (${CURRENT_TOTAL} minutes)"
+
+          SHOULD_TRIGGER=false
+
+          while IFS= read -r line; do
+            ENABLED=$(echo "$line" | jq -r '.enabled')
+            TIME=$(echo "$line" | jq -r '.time')
+
+            if [ "$ENABLED" != "true" ]; then
+              echo "  Schedule $TIME: disabled, skipping"
+              continue
+            fi
+
+            SCHED_HOUR=$(echo "$TIME" | cut -d: -f1)
+            SCHED_MIN=$(echo "$TIME" | cut -d: -f2)
+            SCHED_TOTAL=$((10#$SCHED_HOUR * 60 + 10#$SCHED_MIN))
+
+            DIFF=$((CURRENT_TOTAL - SCHED_TOTAL))
+            if [ $DIFF -lt 0 ]; then DIFF=$((-DIFF)); fi
+
+            echo "  Schedule $TIME ($SCHED_TOTAL min): diff=${DIFF} min"
+
+            if [ $DIFF -le 15 ]; then
+              SHOULD_TRIGGER=true
+              echo "  -> MATCH! Will trigger."
+            fi
+          done < <(jq -c '.schedules[]' docs/schedule.json)
+
+          if [ "$SHOULD_TRIGGER" = "true" ]; then
+            echo "Triggering NBAVision Engine workflow..."
+            gh workflow run nbavision.yml --ref main
+            echo "Triggered!"
+          else
+            echo "No schedule match. Not triggering."
+          fi

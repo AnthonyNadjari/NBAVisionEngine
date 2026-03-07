@@ -37,20 +37,10 @@ def filter_tweet(
     seen_tweet_ids: set,
 ) -> tuple[bool, str | None]:
     """
-    Tweet rejeté si (Section 5):
-    - minutes_since_post > 15
-    - followers < 5000 or > 200000
-    - likes < 10
-    - texte < 20 caractères
-    - contient uniquement URL
-    - contient > 3 hashtags
-    - déjà vu dans session
     Returns (accepted, reject_reason). accepted=True means keep.
     """
     from config import (
         MAX_MINUTES_SINCE_POST,
-        MIN_FOLLOWERS,
-        MAX_FOLLOWERS,
         MIN_LIKES,
         MIN_TEXT_LENGTH,
         MAX_HASHTAGS,
@@ -63,13 +53,6 @@ def filter_tweet(
     minutes = _minutes_since_post(tweet.get("timestamp") or "")
     if minutes > MAX_MINUTES_SINCE_POST:
         return False, "too_old"
-
-    followers = tweet.get("followers")
-    if followers is not None:
-        if followers < MIN_FOLLOWERS:
-            return False, "followers_too_low"
-        if followers > MAX_FOLLOWERS:
-            return False, "followers_too_high"
 
     if (tweet.get("likes") or 0) < MIN_LIKES:
         return False, "likes_too_low"

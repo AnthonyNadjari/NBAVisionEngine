@@ -80,6 +80,17 @@
     .history-item a { color: var(--accent); text-decoration: none; }
     .history-item .time { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; white-space: nowrap; }
     .trigger-feedback { font-size: 0.85rem; margin-top: 0.5rem; }
+    .schedule-slot { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; padding: 0.5rem 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px; }
+    .schedule-slot input[type="time"] { font-family: 'Rajdhani', sans-serif; font-size: 1rem; background: rgba(255,255,255,0.08); border: 1px solid var(--border); color: var(--text); padding: 0.35rem 0.5rem; border-radius: 6px; outline: none; }
+    .schedule-slot input[type="time"]:focus { border-color: var(--accent); }
+    .schedule-toggle { position: relative; width: 38px; height: 20px; flex-shrink: 0; }
+    .schedule-toggle input { opacity: 0; width: 0; height: 0; }
+    .schedule-toggle .slider { position: absolute; inset: 0; background: rgba(255,255,255,0.15); border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+    .schedule-toggle .slider::before { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: var(--text-muted); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .schedule-toggle input:checked + .slider { background: var(--accent); }
+    .schedule-toggle input:checked + .slider::before { transform: translateX(18px); background: #fff; }
+    .schedule-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; padding: 0.2rem 0.4rem; border-radius: 4px; }
+    .schedule-remove:hover { color: var(--error); background: rgba(239,68,68,0.15); }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 </head>
@@ -134,10 +145,17 @@
       <div id="repliesPosted" style="margin-top:0.75rem"></div>
     </section>
 
-    <!-- Schedule -->
-    <section class="card">
+    <!-- Schedule editor -->
+    <section class="card" id="scheduleCard">
       <h2 class="card-title">Schedule</h2>
-      <p class="stat">Automatic: every day at <strong>9:00 AM UTC</strong> and <strong>4:00 PM UTC</strong>. Or trigger manually above.</p>
+      <p class="help-text" style="margin-bottom:1rem">Runs are triggered automatically at the times below (UTC). Toggle on/off, add or remove slots, then hit Save.</p>
+      <div id="scheduleSlots"></div>
+      <div class="btn-row" style="margin-top:1rem">
+        <button type="button" class="btn btn-secondary" id="addSlotBtn">+ Add time</button>
+        <button type="button" class="btn btn-primary" id="saveScheduleBtn">Save schedule</button>
+      </div>
+      <div id="scheduleFeedback" class="trigger-feedback" style="display:none"></div>
+      <p id="scheduleError" class="error-msg" style="display:none"></p>
     </section>
   </div>
 
@@ -422,9 +440,108 @@
         fetchRunnerStatus();
       });
 
+      // ---- Schedule editor ----
+      var scheduleSlots = document.getElementById('scheduleSlots');
+      var addSlotBtn = document.getElementById('addSlotBtn');
+      var saveScheduleBtn = document.getElementById('saveScheduleBtn');
+      var scheduleFeedback = document.getElementById('scheduleFeedback');
+      var scheduleError = document.getElementById('scheduleError');
+      var currentSchedule = [];
+      var scheduleSha = null;
+
+      function renderScheduleSlots() {
+        if (!scheduleSlots) return;
+        scheduleSlots.innerHTML = '';
+        currentSchedule.forEach(function(slot, idx) {
+          var div = document.createElement('div');
+          div.className = 'schedule-slot';
+          div.innerHTML = '<label class="schedule-toggle"><input type="checkbox" ' + (slot.enabled ? 'checked' : '') + ' data-idx="' + idx + '"><span class="slider"></span></label>' +
+            '<input type="time" value="' + (slot.time || '12:00') + '" data-idx="' + idx + '">' +
+            '<span class="stat" style="flex:1">UTC</span>' +
+            '<button type="button" class="schedule-remove" data-idx="' + idx + '" title="Remove">&times;</button>';
+          scheduleSlots.appendChild(div);
+        });
+
+        scheduleSlots.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+          cb.addEventListener('change', function() { currentSchedule[parseInt(this.dataset.idx)].enabled = this.checked; });
+        });
+        scheduleSlots.querySelectorAll('input[type="time"]').forEach(function(inp) {
+          inp.addEventListener('change', function() { currentSchedule[parseInt(this.dataset.idx)].time = this.value; });
+        });
+        scheduleSlots.querySelectorAll('.schedule-remove').forEach(function(btn) {
+          btn.addEventListener('click', function() { currentSchedule.splice(parseInt(this.dataset.idx), 1); renderScheduleSlots(); });
+        });
+      }
+
+      function fetchSchedule() {
+        var token = getToken();
+        if (!token) {
+          if (scheduleError) { scheduleError.textContent = 'Need token to load schedule.'; scheduleError.style.display = 'block'; }
+          currentSchedule = [{time:'09:00',enabled:true},{time:'16:00',enabled:true}];
+          renderScheduleSlots();
+          return;
+        }
+        apiFetch('/contents/docs/schedule.json')
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            if (!data || !data.content) {
+              currentSchedule = [{time:'09:00',enabled:true},{time:'16:00',enabled:true}];
+              scheduleSha = null;
+            } else {
+              scheduleSha = data.sha;
+              var decoded = JSON.parse(atob(data.content.replace(/\n/g, '')));
+              currentSchedule = decoded.schedules || [];
+            }
+            if (scheduleError) scheduleError.style.display = 'none';
+            renderScheduleSlots();
+          })
+          .catch(function(err) {
+            currentSchedule = [{time:'09:00',enabled:true},{time:'16:00',enabled:true}];
+            renderScheduleSlots();
+          });
+      }
+
+      addSlotBtn.addEventListener('click', function() {
+        currentSchedule.push({time: '12:00', enabled: true});
+        renderScheduleSlots();
+      });
+
+      saveScheduleBtn.addEventListener('click', function() {
+        var token = getToken();
+        if (!token) { if (scheduleError) { scheduleError.textContent = 'Need token to save.'; scheduleError.style.display = 'block'; } return; }
+        scheduleFeedback.textContent = 'Saving...';
+        scheduleFeedback.style.display = 'block';
+        scheduleFeedback.style.color = 'var(--text-muted)';
+        if (scheduleError) scheduleError.style.display = 'none';
+
+        var payload = { schedules: currentSchedule, timezone: 'UTC' };
+        var body = { message: 'Update schedule from dashboard', content: btoa(JSON.stringify(payload, null, 2) + '\n') };
+        if (scheduleSha) body.sha = scheduleSha;
+
+        fetch(apiUrl('/contents/docs/schedule.json'), {
+          method: 'PUT',
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function(res) {
+          if (res.ok) return res.json();
+          return res.json().then(function(j) { throw new Error(j.message || 'HTTP ' + res.status); });
+        }).then(function(data) {
+          scheduleSha = data.content && data.content.sha;
+          scheduleFeedback.textContent = 'Schedule saved!';
+          scheduleFeedback.style.color = 'var(--success)';
+        }).catch(function(err) {
+          scheduleFeedback.textContent = 'Failed: ' + (err.message || err);
+          scheduleFeedback.style.color = 'var(--error)';
+          if ((err.message || '').indexOf('409') !== -1 || (err.message || '').indexOf('sha') !== -1) {
+            fetchSchedule();
+          }
+        });
+      });
+
       // Init
       fetchStatus();
       fetchRunnerStatus();
+      fetchSchedule();
     })();
   </script>
 </body>

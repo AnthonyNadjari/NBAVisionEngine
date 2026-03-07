@@ -123,7 +123,7 @@ The job gets picked up by your PC within seconds. Click on the run to see live l
 
 ### Automatic schedule
 
-The bot runs automatically at **9:00 AM UTC** and **4:00 PM UTC** every day. Your PC and runner must be on at those times. If the runner is offline, the job queues and runs when the runner comes back online.
+The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow checks every 30 minutes and triggers the main engine when the current time matches a slot. Your PC and runner must be on at those times. If the runner is offline, the job queues and runs when the runner comes back online.
 
 ### Check if the runner is active
 
@@ -139,11 +139,11 @@ Go to **https://github.com/AnthonyNadjari/NBAVisionEngine/settings/actions/runne
 
 1. **Cookie check** — Validates that critical cookies aren't expired before starting
 2. **Auth** — Opens headless Chrome with stealth patches, loads cookies, navigates to x.com, checks if logged in
-3. **Scrape** — Picks 20 random NBA keywords, searches X, scrolls through results, extracts tweets
-4. **Filter** — Removes old tweets, low-engagement tweets, accounts outside follower range
-5. **Score** — Ranks remaining tweets, keeps top 28
-6. **Reply** — For each top tweet: generates a reply via LLM (or template), validates it, posts it
-7. **Repeat** — Sleeps ~1.5 min, runs the next cycle. Continues until 60 replies or time runs out.
+3. **Scrape** — Picks 20 random NBA keywords, searches X, scrolls 5 times per search for more tweets
+4. **Filter** — Removes tweets older than 2h, low-engagement tweets, URL-only tweets
+5. **Score** — Ranks remaining tweets by engagement velocity + freshness + text quality, keeps top 40
+6. **Reply** — For each top tweet: generates a reply via LLM (or template), validates it, pastes and posts it
+7. **Repeat** — Sleeps ~30s, runs the next cycle. Continues until 60 replies or time runs out.
 8. **Save** — Writes session log, saves refreshed cookies for next run, notifies Discord
 
 ---
@@ -162,7 +162,7 @@ The dashboard at **https://anthonynadjari.github.io/NBAVisionEngine/** shows:
 2. Click **Generate new token**
 3. Name: `NBAVision Dashboard`
 4. Repository access: select **NBAVisionEngine** only
-5. Permissions: **Actions: Read-only**, **Contents: Read-only**
+5. Permissions: **Actions: Read and write**, **Contents: Read and write**
 6. Generate and copy the token (starts with `github_pat_...`)
 7. Open the dashboard URL with `#` followed by your token:
    `https://anthonynadjari.github.io/NBAVisionEngine/#github_pat_YOUR_TOKEN_HERE`
@@ -199,5 +199,7 @@ The dashboard at **https://anthonynadjari.github.io/NBAVisionEngine/** shows:
 | `notify.py` | Discord webhook notifications |
 | `session_log.py` | Write JSON session logs |
 | `config.py` | All configuration and credentials |
-| `.github/workflows/nbavision.yml` | GitHub Actions workflow |
-| `docs/index.html` | GitHub Pages dashboard |
+| `.github/workflows/nbavision.yml` | GitHub Actions workflow (manual trigger only) |
+| `.github/workflows/scheduler.yml` | Lightweight scheduler — checks every 30 min, triggers engine |
+| `docs/index.html` | GitHub Pages dashboard with schedule editor |
+| `docs/schedule.json` | Schedule config — editable from dashboard |

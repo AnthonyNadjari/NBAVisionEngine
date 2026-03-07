@@ -89,7 +89,7 @@ def run_session(page, context, *, browser, playwright_instance):
         print(f"[Cycle {cycle_index}] Scraping...", flush=True)
         try:
             from scraper import scrape_all_keywords
-            raw = scrape_all_keywords(browser, page, context, cycle_index=cycle_index)
+            raw = scrape_all_keywords(page, cycle_index=cycle_index)
             total_scraped += len(raw)
             events.append(_event("scrape_done", {"raw_count": len(raw)}))
             consecutive_errors = max(0, consecutive_errors - 1)
