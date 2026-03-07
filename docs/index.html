@@ -50,20 +50,11 @@
     .btn-primary { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%); color: #fff; box-shadow: 0 4px 20px var(--accent-glow); }
     .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px var(--accent-glow); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .token-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center; }
-    .token-row .btn { flex: 0 0 auto; }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+    .btn-row { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; align-items: center; }
     .help-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.5; }
     .help-text a { color: var(--accent); text-decoration: none; }
-    .section-toggle { width: 100%; text-align: left; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; letter-spacing: 0.05em; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0.5rem 0; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-    .section-toggle:hover { color: #fff; }
-    .section-toggle::after { content: '▼'; font-size: 0.65rem; transition: transform 0.2s; }
-    .section-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
-    .section-content.open { max-height: 1200px; }
-    .section-content ol, .section-content ul { margin: 0.5rem 0 1rem 1.25rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; }
-    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); animation: live 2s ease-in-out infinite; }
-    @keyframes live { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .run-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
-    .run-details a { color: var(--accent); }
     .error-msg { color: var(--error); font-size: 0.9rem; margin-top: 0.5rem; }
     .reply-item { margin-bottom: 0.75rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.9rem; }
     .reply-item a { color: var(--accent); }
@@ -74,6 +65,21 @@
     .live-step.active { color: var(--accent); font-weight: 500; }
     .live-step-icon { flex-shrink: 0; width: 1.2em; }
     .live-elapsed { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .run-details { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-muted); }
+    .run-details a { color: var(--accent); }
+    .runner-status { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .runner-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .runner-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .runner-dot.offline { background: var(--error); box-shadow: 0 0 8px var(--error); }
+    .history-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+    .history-item:last-child { border-bottom: none; }
+    .history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .history-dot.success { background: var(--success); }
+    .history-dot.failure { background: var(--error); }
+    .history-dot.cancelled { background: var(--text-muted); }
+    .history-item a { color: var(--accent); text-decoration: none; }
+    .history-item .time { color: var(--text-muted); font-size: 0.85rem; margin-left: auto; white-space: nowrap; }
+    .trigger-feedback { font-size: 0.85rem; margin-top: 0.5rem; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 </head>
@@ -82,36 +88,57 @@
   <div class="container">
     <header>
       <h1 class="logo">NBAVision Engine</h1>
-      <p class="tagline">Dashboard · Display only</p>
+      <p class="tagline">Control Center</p>
     </header>
 
+    <!-- Runner status -->
     <section class="card">
-      <h2 class="card-title"><span class="live-dot"></span> Live status</h2>
+      <h2 class="card-title">Runner</h2>
+      <div id="runnerStatus" class="runner-status">
+        <span class="runner-dot offline" id="runnerDot"></span>
+        <span class="stat" id="runnerText">Checking...</span>
+      </div>
+      <p class="help-text">The self-hosted runner on your PC must be online for jobs to run. If offline, open <code>C:\actions-runner</code> and run <code>.\run.cmd</code></p>
+    </section>
+
+    <!-- Live status -->
+    <section class="card">
+      <h2 class="card-title"><span class="live-dot" style="width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 10px var(--success);animation:pulse 2s ease-in-out infinite"></span> Live status</h2>
       <div class="status-row">
         <span id="statusBadge" class="status-badge idle">—</span>
         <span id="statusText" class="stat"></span>
       </div>
-      <div id="runDetails" class="run-details" style="display: none;"></div>
-      <div id="liveProgress" class="live-steps" style="display: none;"></div>
-      <div class="token-row">
-        <button type="button" class="btn btn-primary" id="refreshBtn">Refresh status</button>
+      <div id="runDetails" class="run-details" style="display:none"></div>
+      <div id="liveProgress" class="live-steps" style="display:none"></div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="refreshBtn">Refresh</button>
+        <button type="button" class="btn btn-secondary" id="triggerBtn">Trigger run</button>
+        <button type="button" class="btn btn-secondary" id="triggerDryBtn">Trigger dry run</button>
       </div>
-      <p id="statusError" class="error-msg" style="display: none;"></p>
-      <p id="tokenLink" class="help-text" style="display: none; margin-top: 0.75rem;"></p>
+      <div id="triggerFeedback" class="trigger-feedback" style="display:none"></div>
+      <p id="statusError" class="error-msg" style="display:none"></p>
+      <p id="tokenLink" class="help-text" style="display:none;margin-top:0.75rem"></p>
     </section>
 
+    <!-- Run history -->
     <section class="card">
-      <h2 class="card-title">Schedule</h2>
-      <p class="stat">Runs automatically every day at <strong>9am</strong> and <strong>4pm UK time</strong> (09:00 and 16:00 UTC). To run manually, go to <a href="https://github.com/AnthonyNadjari/NBAVisionEngine/actions" target="_blank" rel="noopener">Actions → NBAVision Engine → Run workflow</a>.</p>
+      <h2 class="card-title">Recent runs</h2>
+      <div id="runHistory" class="stat">Loading...</div>
     </section>
 
+    <!-- Last run summary -->
     <section class="card" id="summaryCard">
       <h2 class="card-title">Last run summary</h2>
-      <div id="summaryStats" class="stat" style="margin-bottom: 0.75rem;"></div>
-      <div id="summaryNoData" class="stat" style="color: var(--text-muted); display: none;"></div>
-      <div id="repliesPosted" style="margin-top: 0.75rem;"></div>
+      <div id="summaryStats" class="stat" style="margin-bottom:0.75rem"></div>
+      <div id="summaryNoData" class="stat" style="color:var(--text-muted);display:none"></div>
+      <div id="repliesPosted" style="margin-top:0.75rem"></div>
     </section>
 
+    <!-- Schedule -->
+    <section class="card">
+      <h2 class="card-title">Schedule</h2>
+      <p class="stat">Automatic: every day at <strong>9:00 AM UTC</strong> and <strong>4:00 PM UTC</strong>. Or trigger manually above.</p>
+    </section>
   </div>
 
   <script>
@@ -120,255 +147,222 @@
       var TOKEN_KEY = 'nbavision_gh_token';
       function getToken() {
         try {
-          var t = (typeof sessionStorage !== 'undefined' && sessionStorage) ? sessionStorage.getItem(TOKEN_KEY) || '' : '';
+          var t = sessionStorage.getItem(TOKEN_KEY) || '';
           if (t) return t;
-          var h = (window.location.hash || '').replace(/^#/, '');
-          var q = (window.location.search || '').replace(/^\?/, '').split('&');
-          for (var i = 0; i < q.length; i++) { var p = q[i].split('='); if (p[0] === 't' || p[0] === 'token' || p[0].indexOf('ghp') === 0) { t = decodeURIComponent((p[1] || p[0]).replace(/\+/g, ' ')); break; } }
-          if (!t && h.indexOf('ghp_') === 0) t = h;
-          if (t) { sessionStorage.setItem(TOKEN_KEY, t); if (window.history && window.history.replaceState) window.history.replaceState('', document.title, window.location.pathname + window.location.search); }
+          var h = (location.hash || '').replace(/^#/, '');
+          if (h && (h.indexOf('ghp_') === 0 || h.indexOf('github_pat_') === 0)) {
+            t = h;
+          }
+          var q = (location.search || '').replace(/^\?/, '').split('&');
+          for (var i = 0; i < q.length; i++) { var p = q[i].split('='); if (p[0] === 't' || p[0] === 'token') { t = decodeURIComponent(p[1]); break; } }
+          if (t) {
+            sessionStorage.setItem(TOKEN_KEY, t);
+            if (history.replaceState) history.replaceState('', document.title, location.pathname);
+          }
           return t || '';
         } catch (e) { return ''; }
       }
 
       var repo = { owner: 'AnthonyNadjari', repo: 'NBAVisionEngine' };
-      if (window.location.hostname && window.location.hostname.indexOf('github.io') !== -1) {
-        var parts = (window.location.pathname || '').split('/').filter(Boolean);
+      if (location.hostname.indexOf('github.io') !== -1) {
+        var parts = location.pathname.split('/').filter(Boolean);
         if (parts[0]) repo.repo = parts[0];
-        repo.owner = window.location.hostname.replace('.github.io', '').replace('.github.dev', '');
+        repo.owner = location.hostname.replace('.github.io', '');
       }
 
       function apiUrl(path) { return 'https://api.github.com/repos/' + repo.owner + '/' + repo.repo + path; }
+
+      function apiFetch(path, opts) {
+        var token = getToken();
+        opts = opts || {};
+        opts.headers = Object.assign({ 'Accept': 'application/vnd.github.v3+json' }, opts.headers || {});
+        if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+        var c = new AbortController();
+        var t = setTimeout(function() { c.abort(); }, 12000);
+        opts.signal = c.signal;
+        return fetch(apiUrl(path), opts).finally(function() { clearTimeout(t); });
+      }
 
       var statusBadge = document.getElementById('statusBadge');
       var statusText = document.getElementById('statusText');
       var runDetails = document.getElementById('runDetails');
       var statusError = document.getElementById('statusError');
       var refreshBtn = document.getElementById('refreshBtn');
+      var triggerBtn = document.getElementById('triggerBtn');
+      var triggerDryBtn = document.getElementById('triggerDryBtn');
+      var triggerFeedback = document.getElementById('triggerFeedback');
       var tokenLink = document.getElementById('tokenLink');
-      var summaryCard = document.getElementById('summaryCard');
       var summaryStats = document.getElementById('summaryStats');
       var summaryNoData = document.getElementById('summaryNoData');
       var repliesPosted = document.getElementById('repliesPosted');
       var liveProgress = document.getElementById('liveProgress');
+      var runnerDot = document.getElementById('runnerDot');
+      var runnerText = document.getElementById('runnerText');
+      var runHistory = document.getElementById('runHistory');
 
       function setStatus(status, text, detailsHtml) {
-        if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').toString().replace('_', ' '); }
+        if (statusBadge) { statusBadge.className = 'status-badge ' + (status || 'idle'); statusBadge.textContent = (status || '—').replace('_', ' '); }
         if (statusText) statusText.textContent = text || '';
-        if (runDetails) {
-          runDetails.innerHTML = detailsHtml || '';
-          runDetails.style.display = detailsHtml ? 'block' : 'none';
-        }
+        if (runDetails) { runDetails.innerHTML = detailsHtml || ''; runDetails.style.display = detailsHtml ? 'block' : 'none'; }
       }
 
-      function fetchWithTimeout(url, opts, ms) {
-        var c = new AbortController();
-        var t = setTimeout(function() { c.abort(); }, ms || 15000);
-        opts = opts || {}; opts.signal = c.signal;
-        return fetch(url, opts).finally(function() { clearTimeout(t); });
-      }
-
-      function clearStoredToken() {
-        try { if (typeof sessionStorage !== 'undefined' && sessionStorage) sessionStorage.removeItem(TOKEN_KEY); } catch (e) {}
-      }
       function showTokenHelp(msg) {
-        if (statusError) {
-          statusError.textContent = msg || 'Token missing or invalid.';
-          statusError.style.display = 'block';
-        }
+        if (statusError) { statusError.textContent = msg || 'Token missing or invalid.'; statusError.style.display = 'block'; }
         if (tokenLink) {
-          var base = window.location.origin + (window.location.pathname || '/');
-          tokenLink.innerHTML = 'Create a new token: <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">GitHub → Settings → Developer settings → Personal access tokens</a>. Scopes: <strong>repo</strong>, <strong>Actions: Read and write</strong>. Then open this page once with your token in the URL: <a href="' + base + '#">' + base + '#</a> (paste <code>ghp_...</code> after the #).';
+          var base = location.origin + (location.pathname || '/');
+          tokenLink.innerHTML = 'Need a token: <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Settings → Developer settings → Fine-grained tokens</a>. Permissions: <strong>Actions (read+write)</strong>, <strong>Contents (read)</strong>. Then open: <code>' + base + '#YOUR_TOKEN</code>';
           tokenLink.style.display = 'block';
         }
       }
 
-      var loadingSafetyTimer;
-      function clearLoading() {
-        if (loadingSafetyTimer) { clearTimeout(loadingSafetyTimer); loadingSafetyTimer = null; }
-        if (statusText && statusText.textContent === 'Loading…') {
-          setStatus('idle', statusError && statusError.style.display === 'block' ? '' : 'Could not load. Click Refresh status.');
-        }
+      // Runner status
+      function fetchRunnerStatus() {
+        apiFetch('/actions/runners')
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            if (!data) return;
+            var runners = (data.runners || []).filter(function(r) { return r.labels && r.labels.some(function(l) { return l.name === 'self-hosted'; }); });
+            var online = runners.some(function(r) { return r.status === 'online'; });
+            runnerDot.className = 'runner-dot ' + (online ? 'online' : 'offline');
+            runnerText.textContent = online ? 'Online — ready for jobs' : 'Offline — start runner on your PC';
+          })
+          .catch(function() {
+            runnerText.textContent = 'Could not check (need token with admin scope)';
+          });
       }
 
+      // Run history
+      function renderHistory(runs) {
+        if (!runHistory) return;
+        var nbv = runs.filter(function(w) { return (w.path || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; });
+        if (!nbv.length) { runHistory.textContent = 'No runs yet.'; return; }
+        var html = '';
+        nbv.slice(0, 8).forEach(function(r) {
+          var st = r.conclusion || r.status || 'queued';
+          var cls = st === 'success' ? 'success' : (st === 'failure' ? 'failure' : 'cancelled');
+          var label = st.charAt(0).toUpperCase() + st.slice(1);
+          var date = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+          var trigger = r.event === 'schedule' ? 'scheduled' : (r.event === 'workflow_dispatch' ? 'manual' : r.event);
+          html += '<div class="history-item"><span class="history-dot ' + cls + '"></span><a href="' + (r.html_url || '#') + '" target="_blank">' + label + '</a> <span style="color:var(--text-muted)">(' + trigger + ')</span><span class="time">' + date + '</span></div>';
+        });
+        runHistory.innerHTML = html;
+      }
+
+      // Trigger workflow
+      function triggerWorkflow(dryRun) {
+        var token = getToken();
+        if (!token) { showTokenHelp('Need a token with Actions write scope to trigger runs.'); return; }
+        triggerFeedback.textContent = 'Triggering...';
+        triggerFeedback.style.display = 'block';
+        triggerFeedback.style.color = 'var(--text-muted)';
+        fetch(apiUrl('/actions/workflows/' + WORKFLOW_FILE + '/dispatches'), {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ref: 'main', inputs: { dry_run: dryRun ? 'true' : 'false' } })
+        }).then(function(res) {
+          if (res.status === 204 || res.status === 200) {
+            triggerFeedback.textContent = 'Triggered! Refreshing in 5s...';
+            triggerFeedback.style.color = 'var(--success)';
+            setTimeout(fetchStatus, 5000);
+          } else {
+            return res.json().then(function(j) { throw new Error(j.message || 'HTTP ' + res.status); });
+          }
+        }).catch(function(err) {
+          triggerFeedback.textContent = 'Failed: ' + (err.message || err);
+          triggerFeedback.style.color = 'var(--error)';
+        });
+      }
+
+      triggerBtn.addEventListener('click', function() { triggerWorkflow(false); });
+      triggerDryBtn.addEventListener('click', function() { triggerWorkflow(true); });
+
       function fetchStatus() {
-        if (loadingSafetyTimer) clearTimeout(loadingSafetyTimer);
-        if (statusText) statusText.textContent = 'Loading…';
-        if (statusError) { statusError.textContent = ''; statusError.style.display = 'none'; }
+        if (statusText) statusText.textContent = 'Loading...';
+        if (statusError) statusError.style.display = 'none';
         if (tokenLink) tokenLink.style.display = 'none';
 
-        var token;
-        try { token = getToken(); } catch (e) { setStatus('idle', ''); showTokenHelp(); if (statusError) statusError.textContent = 'Could not read token.'; statusError.style.display = 'block'; return; }
+        var token = getToken();
         if (!token) { setStatus('idle', ''); showTokenHelp(); return; }
 
-        var url;
-        try { url = apiUrl('/actions/runs?per_page=15'); } catch (e) { setStatus('idle', ''); if (statusError) { statusError.textContent = 'Invalid repo config.'; statusError.style.display = 'block'; } return; }
-
-        loadingSafetyTimer = setTimeout(function() { loadingSafetyTimer = null; clearLoading(); }, 10000);
-
-        fetchWithTimeout(url, {
-          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
-        }, 8000)
+        apiFetch('/actions/runs?per_page=15')
           .then(function(res) {
-            if (!res.ok) {
-              if (res.status === 401) {
-                clearStoredToken();
-                return res.json().then(function(j) { throw new Error(j.message || 'Bad credentials'); }).catch(function() { throw new Error('Bad credentials'); });
-              }
-              throw new Error('API ' + res.status);
-            }
+            if (!res.ok) { if (res.status === 401) { sessionStorage.removeItem(TOKEN_KEY); } throw new Error('API ' + res.status); }
             return res.json();
           })
           .then(function(data) {
             var runs = (data && data.workflow_runs) || [];
-            var r = runs.find(function(w) { return (w.path || w.name || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; }) || runs[0];
-            if (!r) {
-              setStatus('idle', 'No runs yet. Click Start engine run.');
-              return;
-            }
+            renderHistory(runs);
+            var r = runs.find(function(w) { return (w.path || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; }) || runs[0];
+            if (!r) { setStatus('idle', 'No runs yet.'); return; }
             var st = r.conclusion || r.status;
             var created = r.created_at ? new Date(r.created_at).toLocaleString() : '';
             var msg = 'Last run: ' + created;
-            if (r.status === 'in_progress') msg += ' — running…';
-            var runUrl = r.html_url || ('https://github.com/' + repo.owner + '/' + repo.repo + '/actions');
-            setStatus(st, msg, '<a href="' + runUrl + '" target="_blank" rel="noopener">View run on GitHub →</a>');
+            if (r.status === 'in_progress') msg += ' — running...';
+            setStatus(st, msg, '<a href="' + (r.html_url || '#') + '" target="_blank">View on GitHub</a>');
             if (r.status === 'queued' || r.status === 'in_progress') {
-              poll();
-              fetchLiveProgress(r.id, r.created_at, token);
+              setTimeout(fetchStatus, 10000);
+              fetchLiveProgress(r.id, r.created_at);
             } else {
-              hideLiveProgress();
+              if (liveProgress) { liveProgress.innerHTML = ''; liveProgress.style.display = 'none'; }
             }
             tryFindLatestSummary(runs, token);
           })
-          .then(function() { if (tokenLink) tokenLink.style.display = 'none'; }, function() {})
           .catch(function(err) {
-            setStatus('idle', err.name === 'AbortError' ? 'Timed out. Click Refresh.' : (err.message || ''));
-            var msg = err.message || 'Could not load runs.';
-            if (statusError) statusError.textContent = msg;
-            if (statusError) statusError.style.display = 'block';
-            if (msg.indexOf('Bad credentials') !== -1 || msg.indexOf('Token') !== -1) showTokenHelp(msg);
-          })
-          .finally(clearLoading);
-      }
-
-      var pollTimer;
-      function poll() {
-        if (pollTimer) clearTimeout(pollTimer);
-        pollTimer = setTimeout(function() { pollTimer = null; fetchStatus(); }, 10000);
-      }
-
-      function hideLiveProgress() {
-        if (liveProgress) { liveProgress.innerHTML = ''; liveProgress.style.display = 'none'; }
-      }
-
-      function showLiveProgress(steps, runCreatedAt) {
-        if (!liveProgress) return;
-        var html = '';
-        steps.forEach(function(s) {
-          var name = (s.name || 'Step ' + (s.number || '')).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          var icon = '○';
-          var cls = 'live-step';
-          if (s.status === 'completed') { icon = '✓'; cls += ' done'; }
-          else if (s.status === 'in_progress') { icon = '▶'; cls += ' active'; }
-          html += '<div class="' + cls + '"><span class="live-step-icon">' + icon + '</span><span>' + name + '</span></div>';
-        });
-        if (runCreatedAt) {
-          var start = new Date(runCreatedAt).getTime();
-          var elapsed = Math.floor((Date.now() - start) / 60000);
-          var elapsedStr = elapsed < 60 ? elapsed + ' min' : Math.floor(elapsed / 60) + ' h ' + (elapsed % 60) + ' min';
-          html += '<div class="live-elapsed">Elapsed: ' + elapsedStr + '</div>';
-        }
-        liveProgress.innerHTML = html;
-        liveProgress.style.display = 'block';
-      }
-
-      function fetchLiveProgress(runId, runCreatedAt, token) {
-        if (!runId || !token || !liveProgress) return;
-        fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/jobs'), {
-          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
-        }, 8000)
-          .then(function(res) { return res.ok ? res.json() : Promise.reject(new Error('Jobs ' + res.status)); })
-          .then(function(data) {
-            var jobs = (data && data.jobs) || [];
-            var job = jobs[0] || jobs.find(function(j) { return (j.name || '').toLowerCase().indexOf('run') !== -1; });
-            var steps = (job && job.steps) || [];
-            if (steps.length) showLiveProgress(steps, runCreatedAt);
-            else if (runCreatedAt && (jobs.length === 0 || (job && job.status === 'queued'))) {
-              showLiveProgress([{ name: 'Waiting for runner…', status: 'in_progress', number: 0 }], runCreatedAt);
-            } else hideLiveProgress();
-          })
-          .catch(function() { hideLiveProgress(); });
-      }
-
-      refreshBtn.addEventListener('click', function() {
-        if (statusText) statusText.textContent = 'Loading…';
-        if (statusError) statusError.style.display = 'none';
-        if (summaryNoData) { summaryNoData.style.display = 'none'; summaryNoData.textContent = ''; }
-        if (summaryStats) summaryStats.innerHTML = '';
-        if (repliesPosted) repliesPosted.innerHTML = '';
-        fetchStatus();
-      });
-
-      function showNoSummary(reason) {
-        if (!summaryNoData) return;
-        if (summaryStats) summaryStats.innerHTML = '';
-        if (repliesPosted) repliesPosted.innerHTML = '';
-        summaryNoData.textContent = reason || 'No session log for this run. Cancelled or timed-out runs don\'t upload logs. Stats and tweeted replies will appear here after a run that completes.';
-        summaryNoData.style.display = 'block';
-      }
-
-      function showSummary(data, runInfo) {
-        if (!summaryCard || !summaryStats) return;
-        if (summaryNoData) summaryNoData.style.display = 'none';
-        var lines = [];
-        if (runInfo && (runInfo.runUrl || runInfo.createdAt)) {
-          var runLabel = runInfo.createdAt ? new Date(runInfo.createdAt).toLocaleString() : 'Run';
-          lines.push('<a href="' + (runInfo.runUrl || '#') + '" target="_blank" rel="noopener" style="color: var(--accent);">Data from run on ' + runLabel + '</a>');
-        }
-        lines.push('Scraped: ' + (data.total_scraped || 0) + ' · Filtered: ' + (data.total_filtered || 0) + ' · Replied: ' + (data.total_replied || 0) + ' · Skipped: ' + (data.total_skipped || 0));
-        if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
-        if (data.end_time) lines.push('Ended: ' + new Date(data.end_time).toLocaleString());
-        if (data.skip_reasons && Object.keys(data.skip_reasons).length) {
-          var parts = [];
-          for (var k in data.skip_reasons) parts.push(k + ': ' + data.skip_reasons[k]);
-          lines.push('Skip reasons: ' + parts.join(', '));
-        }
-        summaryStats.innerHTML = lines.join('<br>');
-        if (repliesPosted && data.replies_posted && data.replies_posted.length) {
-          var html = '<strong>Tweets posted (' + data.replies_posted.length + '):</strong>';
-          data.replies_posted.forEach(function(item) {
-            html += '<div class="reply-item"><a href="' + (item.tweet_url || '#') + '" target="_blank" rel="noopener">Tweet</a><div class="reply-text">' + (item.reply_text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div></div>';
+            setStatus('idle', '');
+            var msg = err.message || 'Could not load.';
+            if (statusError) { statusError.textContent = msg; statusError.style.display = 'block'; }
+            if (msg.indexOf('401') !== -1) showTokenHelp('Token expired or invalid.');
           });
-          repliesPosted.innerHTML = html;
-        } else if (repliesPosted) {
-          repliesPosted.innerHTML = '';
-        }
       }
 
+      function fetchLiveProgress(runId, runCreatedAt) {
+        if (!runId || !liveProgress) return;
+        apiFetch('/actions/runs/' + runId + '/jobs')
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            if (!data) return;
+            var job = (data.jobs || [])[0];
+            var steps = (job && job.steps) || [];
+            if (!steps.length) {
+              liveProgress.innerHTML = '<div class="live-step active"><span class="live-step-icon">▶</span>Waiting for runner...</div>';
+              liveProgress.style.display = 'block';
+              return;
+            }
+            var html = '';
+            steps.forEach(function(s) {
+              var icon = s.status === 'completed' ? '✓' : (s.status === 'in_progress' ? '▶' : '○');
+              var cls = s.status === 'completed' ? 'done' : (s.status === 'in_progress' ? 'active' : '');
+              html += '<div class="live-step ' + cls + '"><span class="live-step-icon">' + icon + '</span>' + (s.name || '') + '</div>';
+            });
+            if (runCreatedAt) {
+              var elapsed = Math.floor((Date.now() - new Date(runCreatedAt).getTime()) / 60000);
+              html += '<div class="live-elapsed">Elapsed: ' + (elapsed < 60 ? elapsed + ' min' : Math.floor(elapsed/60) + 'h ' + (elapsed%60) + 'm') + '</div>';
+            }
+            liveProgress.innerHTML = html;
+            liveProgress.style.display = 'block';
+          })
+          .catch(function() {});
+      }
+
+      // Summary from artifacts (handles session-logs-<id> naming)
       function fetchRunSummary(runId, token, runInfo) {
         if (!runId || !token || !window.JSZip) return Promise.resolve(null);
-        runInfo = runInfo || {};
-        return fetchWithTimeout(apiUrl('/actions/runs/' + runId + '/artifacts'), {
-          headers: { 'Accept': 'application/vnd.github.v3+json', 'Authorization': 'Bearer ' + token }
-        }, 5000)
-          .then(function(res) { return res.ok ? res.json() : Promise.reject(new Error('Artifacts ' + res.status)); })
+        return apiFetch('/actions/runs/' + runId + '/artifacts')
+          .then(function(res) { return res.ok ? res.json() : null; })
           .then(function(data) {
-            var artifacts = (data && data.artifacts) || [];
-            var sessionLogs = artifacts.filter(function(a) { return (a.name || '') === 'session-logs'; })[0];
-            if (!sessionLogs || !sessionLogs.id) return null;
+            if (!data) return null;
+            var artifacts = data.artifacts || [];
+            var sessionLogs = artifacts.find(function(a) { return (a.name || '').indexOf('session-logs') === 0; });
+            if (!sessionLogs) return null;
             return fetch(apiUrl('/actions/artifacts/' + sessionLogs.id + '/zip'), {
-              headers: { 'Authorization': 'Bearer ' + token },
-              redirect: 'follow'
-            }).then(function(zipRes) { return zipRes.ok ? zipRes.blob() : Promise.reject(new Error('Zip ' + zipRes.status)); });
+              headers: { 'Authorization': 'Bearer ' + token }, redirect: 'follow'
+            }).then(function(r) { return r.ok ? r.blob() : null; });
           })
           .then(function(blob) {
             if (!blob) return null;
-            return window.JSZip.loadAsync(blob).then(function(zip) {
+            return JSZip.loadAsync(blob).then(function(zip) {
               var names = [];
-              zip.forEach(function(rel) {
-                var base = rel.split('/').pop();
-                if (/session_\d{8}_\d{6}\.json$/.test(base)) names.push(rel);
-              });
+              zip.forEach(function(rel) { if (/session_\d{8}_\d{6}\.json$/.test(rel)) names.push(rel); });
               names.sort();
               var latest = names[names.length - 1];
               if (!latest) return null;
@@ -379,15 +373,39 @@
           .catch(function() { return null; });
       }
 
+      function showSummary(data, runInfo) {
+        if (!summaryStats) return;
+        if (summaryNoData) summaryNoData.style.display = 'none';
+        var lines = [];
+        if (runInfo && runInfo.createdAt) {
+          lines.push('<a href="' + (runInfo.runUrl || '#') + '" target="_blank" style="color:var(--accent)">Run from ' + new Date(runInfo.createdAt).toLocaleString() + '</a>');
+        }
+        lines.push('Scraped: <strong>' + (data.total_scraped || 0) + '</strong> · Filtered: <strong>' + (data.total_filtered || 0) + '</strong> · Replied: <strong>' + (data.total_replied || 0) + '</strong> · Skipped: <strong>' + (data.total_skipped || 0) + '</strong>');
+        if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
+        if (data.end_time) lines.push('Ended: ' + new Date(data.end_time).toLocaleString());
+        if (data.skip_reasons && Object.keys(data.skip_reasons).length) {
+          var parts = []; for (var k in data.skip_reasons) parts.push(k + ': ' + data.skip_reasons[k]);
+          lines.push('Skip reasons: ' + parts.join(', '));
+        }
+        summaryStats.innerHTML = lines.join('<br>');
+        if (repliesPosted && data.replies_posted && data.replies_posted.length) {
+          var html = '<strong>Replies posted (' + data.replies_posted.length + '):</strong>';
+          data.replies_posted.forEach(function(item) {
+            html += '<div class="reply-item"><a href="' + (item.tweet_url || '#') + '" target="_blank">Tweet</a><div class="reply-text">' + (item.reply_text || '').replace(/</g, '&lt;') + '</div></div>';
+          });
+          repliesPosted.innerHTML = html;
+        }
+      }
+
       function tryFindLatestSummary(runs, token) {
-        var nbavisionRuns = (runs || []).filter(function(w) { return (w.path || w.name || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; });
-        if (nbavisionRuns.length === 0) { showNoSummary('No runs yet.'); return; }
+        var nbv = runs.filter(function(w) { return (w.path || '').indexOf('nbavision') !== -1 || (w.name || '').indexOf('NBAVision') !== -1; });
+        if (!nbv.length) { if (summaryNoData) { summaryNoData.textContent = 'No runs yet.'; summaryNoData.style.display = 'block'; } return; }
         function tryNext(i) {
-          if (i >= nbavisionRuns.length) {
-            showNoSummary('No session log in the last ' + nbavisionRuns.length + ' runs. Cancelled or timed-out runs don\'t upload logs. Stats and tweets will appear here after a run that completes.');
+          if (i >= Math.min(nbv.length, 5)) {
+            if (summaryNoData) { summaryNoData.textContent = 'No session log found in recent runs.'; summaryNoData.style.display = 'block'; }
             return;
           }
-          var r = nbavisionRuns[i];
+          var r = nbv[i];
           fetchRunSummary(r.id, token, { runUrl: r.html_url, createdAt: r.created_at }).then(function(result) {
             if (result) showSummary(result.json, result.runInfo);
             else tryNext(i + 1);
@@ -396,10 +414,17 @@
         tryNext(0);
       }
 
-      (function init() {
-        if (statusText && !statusText.textContent) statusText.textContent = 'Loading…';
+      refreshBtn.addEventListener('click', function() {
+        if (summaryStats) summaryStats.innerHTML = '';
+        if (repliesPosted) repliesPosted.innerHTML = '';
+        if (summaryNoData) summaryNoData.style.display = 'none';
         fetchStatus();
-      })();
+        fetchRunnerStatus();
+      });
+
+      // Init
+      fetchStatus();
+      fetchRunnerStatus();
     })();
   </script>
 </body>
