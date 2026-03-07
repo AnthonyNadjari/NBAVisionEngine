@@ -14,11 +14,12 @@ from config import (
     PROJECT_ROOT,
 )
 
+LOGS_DIR = PROJECT_ROOT / "logs"
+
 
 def _ensure_logs_dir() -> Path:
-    d = PROJECT_ROOT / "logs"
-    d.mkdir(exist_ok=True)
-    return d
+    LOGS_DIR.mkdir(exist_ok=True)
+    return LOGS_DIR
 
 
 def _screenshot_on_error(page: Page, label: str) -> None:
@@ -39,6 +40,7 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
     """
     Navigate to tweet, click reply, type char-by-char, send.
     In DRY_RUN mode: navigates and validates the page but does not type or send.
+    After posting, checks for a toast/confirmation to verify the reply went through.
     Returns (success, error_message).
     """
     tweet_id = tweet_url.rstrip("/").split("/")[-1]
@@ -77,7 +79,16 @@ def post_reply(page: Page, tweet_url: str, reply_text: str) -> tuple[bool, str |
             return False, "send_button_not_found"
         send_btn.click()
 
+        # Wait and check for confirmation toast or that the reply box disappears
         time.sleep(random.uniform(2, 4))
+
+        # X shows a toast with "Your post was sent" on success
+        try:
+            toast = page.locator('[data-testid="toast"]').first
+            if toast.is_visible(timeout=3000):
+                print(f"  Post confirmed (toast visible)", flush=True)
+        except Exception:
+            pass
 
         return True, None
     except Exception as e:

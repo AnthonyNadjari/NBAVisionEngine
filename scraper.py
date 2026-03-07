@@ -2,6 +2,7 @@
 NBAVision Engine — Scraping Twitter via Playwright DOM (Spec Section 4).
 Playwright sync API is not thread-safe; keywords are scraped sequentially.
 Each cycle samples a random subset of keywords to reduce detection footprint.
+High-priority keywords (broad terms) are always included.
 """
 import random
 import re
@@ -23,6 +24,12 @@ from config import (
     MAX_PROFILES_OPENED_PER_CYCLE,
 )
 
+# These broad keywords tend to yield more and better results
+HIGH_PRIORITY_KEYWORDS = {
+    "NBA", "NBA playoffs", "NBA trade", "NBA game", "NBA tonight",
+    "LeBron", "Stephen Curry", "Luka Doncic", "Victor Wembanyama",
+}
+
 
 def _wait_random(low: float, high: float) -> None:
     time.sleep(random.uniform(low, high))
@@ -36,18 +43,31 @@ def _parse_int_from_aria(aria_label: str | None) -> int:
     return int(digits) if digits else 0
 
 
+def _safe_locator_attr(locator, attr: str, default=None):
+    """Safely get attribute from a locator, returning default on failure."""
+    try:
+        if locator.count():
+            return locator.get_attribute(attr)
+    except Exception:
+        pass
+    return default
+
+
 def extract_tweets_from_page(page: Page) -> list[dict]:
-    """
-    Extract tweets from current page using article[data-testid="tweet"].
-    """
-    articles = page.locator('article[data-testid="tweet"]')
-    count = articles.count()
+    """Extract tweets from current page using article[data-testid='tweet']."""
+    try:
+        articles = page.locator('article[data-testid="tweet"]')
+        count = articles.count()
+    except Exception:
+        return []
+
     tweets = []
     for i in range(count):
         try:
             art = articles.nth(i)
+
             link_el = art.locator('a[href*="/status/"]').first
-            href = link_el.get_attribute("href") if link_el.count() else None
+            href = _safe_locator_attr(link_el, "href")
             tweet_id = None
             if href:
                 match = re.search(r"/status/(\d+)", href)
@@ -55,22 +75,24 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
                     tweet_id = match.group(1)
 
             text_el = art.locator('div[data-testid="tweetText"]').first
-            text = (text_el.inner_text() if text_el.count() else "") or ""
+            try:
+                text = (text_el.inner_text() if text_el.count() else "") or ""
+            except Exception:
+                text = ""
 
             user_el = art.locator('a[href^="/"][role="link"]').first
-            user_href = user_el.get_attribute("href") if user_el.count() else None
+            user_href = _safe_locator_attr(user_el, "href")
             username = (user_href or "").strip("/").split("/")[0] if user_href else ""
 
             like_el = art.locator('[data-testid="like"]').first
             reply_el = art.locator('[data-testid="reply"]').first
             retweet_el = art.locator('[data-testid="retweet"]').first
-            likes = _parse_int_from_aria(like_el.get_attribute("aria-label") if like_el.count() else None)
-            replies = _parse_int_from_aria(reply_el.get_attribute("aria-label") if reply_el.count() else None)
-            retweets = _parse_int_from_aria(retweet_el.get_attribute("aria-label") if retweet_el.count() else None)
+            likes = _parse_int_from_aria(_safe_locator_attr(like_el, "aria-label"))
+            replies = _parse_int_from_aria(_safe_locator_attr(reply_el, "aria-label"))
+            retweets = _parse_int_from_aria(_safe_locator_attr(retweet_el, "aria-label"))
 
             time_el = art.locator("time").first
-            datetime_attr = time_el.get_attribute("datetime") if time_el.count() else None
-            timestamp = datetime_attr or ""
+            timestamp = _safe_locator_attr(time_el, "datetime") or ""
 
             if tweet_id and username:
                 tweets.append({
@@ -106,11 +128,14 @@ def fetch_followers_for_tweets(
         if not username:
             continue
         profile_url = f"{base_url}/{username}"
-        new_page = context.new_page()
+        new_page = None
         try:
+            new_page = context.new_page()
             new_page.goto(profile_url, wait_until="domcontentloaded", timeout=15000)
-            _wait_random(1.5, 3.5)
-            follower_el = new_page.locator('a[href*="/followers"]').first
+            _wait_random(1.5, 3.0)
+            follower_el = new_page.locator('a[href*="/verified_followers"]').first
+            if not follower_el.count():
+                follower_el = new_page.locator('a[href*="/followers"]').first
             if follower_el.count():
                 aria = follower_el.get_attribute("aria-label")
                 t["followers"] = _parse_int_from_aria(aria)
@@ -120,14 +145,23 @@ def fetch_followers_for_tweets(
         except Exception:
             t["followers"] = 0
         finally:
-            new_page.close()
+            if new_page:
+                try:
+                    new_page.close()
+                except Exception:
+                    pass
 
 
 def scrape_keyword(page: Page, keyword: str) -> list[dict]:
     """Navigate to search URL, scroll, extract tweets."""
     query = quote_plus(keyword)
     url = TWITTER_SEARCH_BASE.format(query=query)
-    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        print(f"      Navigation timeout for {keyword!r}: {e}", flush=True)
+        return []
+
     _wait_random(SEARCH_WAIT_SEC_MIN, SEARCH_WAIT_SEC_MAX)
 
     for _ in range(3):
@@ -142,18 +176,41 @@ def scrape_keyword(page: Page, keyword: str) -> list[dict]:
     return tweets
 
 
-def scrape_all_keywords(browser, page: Page, context) -> list[dict]:
+def _select_keywords(cycle_index: int) -> list[str]:
     """
-    Sample a random subset of KEYWORDS each cycle, scrape them sequentially,
-    then fetch followers. Deduplicates by tweet_id.
+    Smart keyword selection: always include a few high-priority keywords,
+    then fill the rest randomly. Rotate which high-priority ones are included.
     """
     sample_size = min(KEYWORDS_PER_CYCLE, len(KEYWORDS))
-    keywords = random.sample(KEYWORDS, sample_size)
-    print(f"    Sampling {sample_size}/{len(KEYWORDS)} keywords this cycle", flush=True)
+
+    hp_in_keywords = [k for k in KEYWORDS if k in HIGH_PRIORITY_KEYWORDS]
+    other = [k for k in KEYWORDS if k not in HIGH_PRIORITY_KEYWORDS]
+
+    # Always include 5 high-priority keywords (rotated based on cycle)
+    hp_count = min(5, len(hp_in_keywords))
+    random.shuffle(hp_in_keywords)
+    selected_hp = hp_in_keywords[:hp_count]
+
+    remaining_slots = sample_size - len(selected_hp)
+    selected_other = random.sample(other, min(remaining_slots, len(other)))
+
+    result = selected_hp + selected_other
+    random.shuffle(result)
+    return result
+
+
+def scrape_all_keywords(browser, page: Page, context, cycle_index: int = 0) -> list[dict]:
+    """
+    Sample a smart subset of KEYWORDS, scrape them sequentially,
+    then fetch followers. Deduplicates by tweet_id.
+    """
+    keywords = _select_keywords(cycle_index)
+    print(f"    Scraping {len(keywords)} keywords this cycle", flush=True)
 
     seen_ids: set[str] = set()
     all_tweets: list[dict] = []
     consecutive_kw_errors = 0
+    empty_count = 0
 
     for i, keyword in enumerate(keywords, 1):
         if consecutive_kw_errors >= 5:
@@ -171,12 +228,17 @@ def scrape_all_keywords(browser, page: Page, context) -> list[dict]:
                     seen_ids.add(tid)
                     all_tweets.append(t)
                     new_in_batch += 1
-            print(f"      -> {len(batch)} tweets, {new_in_batch} new (total unique: {len(all_tweets)})", flush=True)
+            print(f"      -> {len(batch)} tweets, {new_in_batch} new (total: {len(all_tweets)})", flush=True)
             consecutive_kw_errors = 0
+            if len(batch) == 0:
+                empty_count += 1
         except Exception as ex:
             consecutive_kw_errors += 1
             print(f"      -> error ({consecutive_kw_errors}/5): {ex}", flush=True)
             continue
+
+    if empty_count > len(keywords) * 0.7:
+        print(f"    WARNING: {empty_count}/{len(keywords)} keywords returned 0 tweets — session may be degraded", flush=True)
 
     print(f"    Fetching followers for up to {MAX_PROFILES_OPENED_PER_CYCLE} profiles...", flush=True)
     fetch_followers_for_tweets(page, context, all_tweets, MAX_PROFILES_OPENED_PER_CYCLE)

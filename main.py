@@ -4,9 +4,11 @@ Authentication via cookies, then engine execution.
 """
 import os
 import sys
+import traceback
 from auth import launch_and_auth, save_session_state
 from engine import run_session
 from notify import notify_auth_failure
+from session_log import write_session_log, build_session_log
 from config import (
     MAX_REPLIES,
     CYCLE_INTERVAL_MINUTES,
@@ -15,6 +17,30 @@ from config import (
     DRY_RUN,
     KEYWORDS_PER_CYCLE,
 )
+
+
+def _write_failure_log(reason: str, run_id: str) -> None:
+    """Write a minimal session log on auth failure so artifacts always exist."""
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    log_data = build_session_log(
+        start_time=now,
+        end_time=now,
+        total_scraped=0,
+        total_filtered=0,
+        total_scored=0,
+        total_llm_calls=0,
+        total_replied=0,
+        total_skipped=0,
+        skip_reasons={},
+        avg_response_length=0,
+        avg_engagement_velocity=0,
+        replies_posted=[],
+        run_id=run_id or None,
+        events=[{"step": "auth_failure", "at": now, "detail": {"reason": reason}}],
+    )
+    path = write_session_log(log_data)
+    print(f"Failure log written to {path}", flush=True)
 
 
 def main() -> int:
@@ -26,6 +52,7 @@ def main() -> int:
         f"keywords_per_cycle={KEYWORDS_PER_CYCLE}, dry_run={DRY_RUN}",
         flush=True,
     )
+    print(f"Working directory: {os.getcwd()}", flush=True)
 
     result = launch_and_auth()
     if len(result) == 5 and result[0] is None:
@@ -33,10 +60,13 @@ def main() -> int:
         if reason == "no_cookies":
             msg = "No cookies. Set TWITTER_COOKIES_JSON (repo secret or env)."
         elif reason == "cookies_expired":
-            msg = "Critical cookies are expired. Re-export from browser."
+            msg = "Critical cookies are expired or missing. Re-export from browser."
+        elif reason == "browser_launch_failed":
+            msg = "Could not launch Chromium. Check Playwright installation."
         else:
             msg = "Cookies present but session invalid or expired. Re-export cookies from the browser where you're logged in to X."
         print(f"ERR: {msg}", flush=True)
+        _write_failure_log(reason, run_id)
         notify_auth_failure(reason)
         return 1
 
@@ -50,16 +80,24 @@ def main() -> int:
         return 0
     except Exception as e:
         print(f"Session error: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        _write_failure_log(f"session_crash: {e}", run_id)
         return 1
     finally:
         try:
             save_session_state(context)
         except Exception:
             pass
-        if browser:
-            browser.close()
-        if pw:
-            pw.stop()
+        try:
+            if browser:
+                browser.close()
+        except Exception:
+            pass
+        try:
+            if pw:
+                pw.stop()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

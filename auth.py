@@ -2,7 +2,9 @@
 NBAVision Engine — Twitter authentication via cookies with stealth & persistence.
 """
 import json
+import os
 import time
+import traceback
 from pathlib import Path
 from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
@@ -28,6 +30,13 @@ window.navigator.permissions.query = (params) =>
         ? Promise.resolve({ state: Notification.permission })
         : origQuery(params);
 """
+
+LOGS_DIR = PROJECT_ROOT / "logs"
+
+
+def _ensure_logs_dir() -> Path:
+    LOGS_DIR.mkdir(exist_ok=True)
+    return LOGS_DIR
 
 
 def _normalize_cookie_domain(domain: str | None) -> str:
@@ -75,12 +84,14 @@ def parse_cookies(raw: str) -> list[dict]:
 
 def validate_cookie_expiry(cookies: list[dict]) -> list[str]:
     """Return warnings for critical cookies that are expired or near-expiry."""
-    import time as _time
-    now = _time.time()
+    now = time.time()
     warnings = []
     critical = {"auth_token", "ct0", "twid", "kdt"}
+    found_critical = set()
     for c in cookies:
         name = c.get("name", "")
+        if name in critical:
+            found_critical.add(name)
         if name not in critical:
             continue
         exp = c.get("expires") or c.get("expirationDate")
@@ -92,13 +103,12 @@ def validate_cookie_expiry(cookies: list[dict]) -> list[str]:
         elif exp_ts - now < 86400:
             hours_left = (exp_ts - now) / 3600
             warnings.append(f"EXPIRING SOON: {name} expires in {hours_left:.1f}h")
+    missing = critical - found_critical
+    if "auth_token" in missing:
+        warnings.append("MISSING: auth_token cookie not found")
+    if "ct0" in missing:
+        warnings.append("MISSING: ct0 cookie not found")
     return warnings
-
-
-def _ensure_logs_dir() -> Path:
-    d = PROJECT_ROOT / "logs"
-    d.mkdir(exist_ok=True)
-    return d
 
 
 def save_session_state(context: BrowserContext) -> None:
@@ -110,6 +120,19 @@ def save_session_state(context: BrowserContext) -> None:
         print(f"Auth: Could not save session state: {e}", flush=True)
 
 
+def check_session_alive(page: Page) -> bool:
+    """Quick check if the session is still valid (useful mid-run)."""
+    try:
+        page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=20000)
+        avatar = page.locator('[data-testid="SideNav_AccountSwitcher_Button"]').first
+        if avatar.is_visible(timeout=8000):
+            return True
+        timeline = page.locator('[data-testid="primaryColumn"]').first
+        return timeline.is_visible(timeout=5000)
+    except Exception:
+        return False
+
+
 def launch_and_auth() -> tuple:
     """
     1. Launch headless Chromium with stealth patches
@@ -118,6 +141,8 @@ def launch_and_auth() -> tuple:
     4. Save updated session state on success
     Returns (playwright, browser, context, page) or (*None, reason_str).
     """
+    _ensure_logs_dir()
+
     raw = get_twitter_cookies_json()
     cookies = parse_cookies(raw)
     if not cookies:
@@ -128,28 +153,37 @@ def launch_and_auth() -> tuple:
         print(f"Auth: {w}", flush=True)
 
     expired_critical = [w for w in cookie_warnings if w.startswith("EXPIRED")]
-    if expired_critical:
-        print("Auth: Critical cookies are expired. Re-export from browser.", flush=True)
+    missing_critical = [w for w in cookie_warnings if w.startswith("MISSING")]
+    if expired_critical or missing_critical:
+        print("Auth: Critical cookies are expired or missing. Re-export from browser.", flush=True)
         return None, None, None, None, "cookies_expired"
 
     print(f"Auth: Loaded {len(cookies)} cookies.", flush=True)
 
     pw = sync_playwright().start()
     print("Auth: Launching headless Chromium (stealth)...", flush=True)
-    browser: Browser = pw.chromium.launch(
-        headless=True,
-        args=[
-            "--disable-blink-features=AutomationControlled",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-        ],
-    )
+    try:
+        browser: Browser = pw.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+            ],
+        )
+    except Exception as e:
+        print(f"Auth: Failed to launch Chromium: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        pw.stop()
+        return None, None, None, None, "browser_launch_failed"
 
     use_state = STATE_FILE.is_file()
+    context = None
+
     if use_state:
         print(f"Auth: Restoring session from {STATE_FILE.name}", flush=True)
         try:
-            context: BrowserContext = browser.new_context(
+            context = browser.new_context(
                 storage_state=str(STATE_FILE),
                 user_agent=BROWSER_USER_AGENT,
                 viewport=BROWSER_VIEWPORT,
@@ -158,8 +192,9 @@ def launch_and_auth() -> tuple:
         except Exception as e:
             print(f"Auth: state.json invalid ({e}), falling back to raw cookies", flush=True)
             use_state = False
+            context = None
 
-    if not use_state:
+    if context is None:
         context = browser.new_context(
             user_agent=BROWSER_USER_AGENT,
             viewport=BROWSER_VIEWPORT,
@@ -184,7 +219,11 @@ def launch_and_auth() -> tuple:
             return False
 
     print("Auth: Navigating to X home...", flush=True)
-    page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+    try:
+        page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        print(f"Auth: Navigation failed: {e}", flush=True)
+
     if _check_logged_in():
         print("Auth: Session valid (timeline/avatar visible).", flush=True)
         save_session_state(context)
@@ -193,8 +232,11 @@ def launch_and_auth() -> tuple:
     # If state.json failed, retry with raw cookies
     if use_state:
         print("Auth: state.json session failed, retrying with raw cookies...", flush=True)
-        page.close()
-        context.close()
+        try:
+            page.close()
+            context.close()
+        except Exception:
+            pass
         context = browser.new_context(
             user_agent=BROWSER_USER_AGENT,
             viewport=BROWSER_VIEWPORT,
@@ -203,29 +245,41 @@ def launch_and_auth() -> tuple:
         context.add_cookies(cookies)
         context.add_init_script(STEALTH_JS)
         page = context.new_page()
-        page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+        try:
+            page.goto(TWITTER_HOME_URL, wait_until="domcontentloaded", timeout=30000)
+        except Exception as e:
+            print(f"Auth: Navigation failed on retry: {e}", flush=True)
         if _check_logged_in():
             print("Auth: Session valid with raw cookies.", flush=True)
             save_session_state(context)
             return pw, browser, context, page
 
     print("Auth: First load failed, retrying once...", flush=True)
-    page.reload(wait_until="domcontentloaded", timeout=30000)
-    page.wait_for_timeout(3000)
+    try:
+        page.reload(wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(3000)
+    except Exception as e:
+        print(f"Auth: Reload failed: {e}", flush=True)
     if _check_logged_in():
         print("Auth: Session valid after retry.", flush=True)
         save_session_state(context)
         return pw, browser, context, page
 
-    # Screenshot for debugging
+    # Screenshot for debugging — capture what the browser actually shows
     try:
-        ss_path = _ensure_logs_dir() / "auth_failure.png"
+        ss_path = LOGS_DIR / "auth_failure.png"
         page.screenshot(path=str(ss_path), full_page=True)
         print(f"Auth: Failure screenshot saved to {ss_path}", flush=True)
-    except Exception:
-        pass
+        page_title = page.title()
+        page_url = page.url
+        print(f"Auth: Page title='{page_title}', url='{page_url}'", flush=True)
+    except Exception as e:
+        print(f"Auth: Could not capture screenshot: {e}", flush=True)
 
     print("Auth: Session invalid or expired.", flush=True)
-    browser.close()
-    pw.stop()
+    try:
+        browser.close()
+        pw.stop()
+    except Exception:
+        pass
     return None, None, None, None, "session_invalid"

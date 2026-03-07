@@ -12,7 +12,7 @@ from llm_client import call_llm
 from reply_validator import validate_reply
 from poster import post_reply, wait_before_next_tweet
 from session_log import write_session_log, build_session_log
-from auth import save_session_state
+from auth import save_session_state, check_session_alive
 from notify import notify_session_summary
 from config import (
     MAX_REPLIES,
@@ -23,6 +23,8 @@ from config import (
     MAX_POSTING_FAILURES,
     DRY_RUN,
 )
+
+SESSION_HEALTH_CHECK_INTERVAL = 5
 
 
 def _engagement_velocity(tweet: dict) -> float:
@@ -63,22 +65,31 @@ def run_session(page, context, *, browser, playwright_instance):
 
     consecutive_errors = 0
     posting_failures = 0
-    cookie_valid = True
     cycle_index = 0
 
     if DRY_RUN:
         print("*** DRY RUN MODE — no replies will be posted ***", flush=True)
 
-    while total_replied < MAX_REPLIES and cookie_valid and posting_failures < MAX_POSTING_FAILURES:
+    while total_replied < MAX_REPLIES and posting_failures < MAX_POSTING_FAILURES:
         if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
             events.append(_event("session_stop", {"reason": "max_consecutive_errors"}))
+            print(f"Stopping: {consecutive_errors} consecutive errors reached limit", flush=True)
             break
+
+        # Periodic session health check
+        if cycle_index > 0 and cycle_index % SESSION_HEALTH_CHECK_INTERVAL == 0:
+            print(f"[Cycle {cycle_index}] Session health check...", flush=True)
+            if not check_session_alive(page):
+                print("Session appears dead — cookies may have been invalidated", flush=True)
+                events.append(_event("session_stop", {"reason": "session_dead"}))
+                break
+            print("  Session still alive.", flush=True)
 
         events.append(_event("cycle_start", {"cycle_index": cycle_index}))
         print(f"[Cycle {cycle_index}] Scraping...", flush=True)
         try:
             from scraper import scrape_all_keywords
-            raw = scrape_all_keywords(browser, page, context)
+            raw = scrape_all_keywords(browser, page, context, cycle_index=cycle_index)
             total_scraped += len(raw)
             events.append(_event("scrape_done", {"raw_count": len(raw)}))
             consecutive_errors = max(0, consecutive_errors - 1)
@@ -89,6 +100,13 @@ def run_session(page, context, *, browser, playwright_instance):
             backoff = min(300, 60 * (2 ** (consecutive_errors - 1)))
             time.sleep(backoff + random.uniform(0, 30))
             cycle_index += 1
+            continue
+
+        if len(raw) == 0:
+            print(f"[Cycle {cycle_index}] No tweets scraped — skipping cycle", flush=True)
+            events.append(_event("cycle_empty", {"cycle_index": cycle_index}))
+            cycle_index += 1
+            time.sleep(random.uniform(30, 60))
             continue
 
         accepted, cycle_skip = filter_tweets(raw, seen_tweet_ids)
@@ -120,7 +138,6 @@ def run_session(page, context, *, browser, playwright_instance):
             if replied_author_count.get(author, 0) >= MAX_REPLIES_PER_AUTHOR:
                 total_skipped += 1
                 skip_reasons["max_per_author"] = skip_reasons.get("max_per_author", 0) + 1
-                print(f"  Skip: max replies per @{author} ({tweet_id})", flush=True)
                 events.append(_event("skip", {"tweet_id": tweet_id, "reason": "max_per_author", "author": author}))
                 continue
 
@@ -216,6 +233,7 @@ def run_session(page, context, *, browser, playwright_instance):
     print("--- Session summary ---", flush=True)
     print(f"  Replied: {total_replied}, skipped: {total_skipped}, LLM calls: {total_llm_calls}", flush=True)
     print(f"  Scraped: {total_scraped}, passed filter: {total_filtered}, scored: {total_scored}", flush=True)
+    print(f"  Cycles: {cycle_index}, posting failures: {posting_failures}", flush=True)
     if skip_reasons:
         print(f"  Skip reasons: {dict(skip_reasons)}", flush=True)
     if DRY_RUN:

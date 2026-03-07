@@ -81,8 +81,9 @@ jobs:
           if not warnings:
               print('  All critical cookies look fresh')
           expired = [w for w in warnings if w.startswith('EXPIRED')]
-          if expired:
-              print('::warning::Critical cookies are expired. Run may fail.')
+          missing = [w for w in warnings if w.startswith('MISSING')]
+          if expired or missing:
+              print('::warning::Critical cookies are expired or missing. Run will likely fail.')
           "
 
       - name: Run NBAVision Engine
@@ -93,22 +94,19 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           NBAVISION_RUN_ID: ${{ github.run_id }}
-        run: python main.py
+        run: |
+          python main.py 2>&1 | tee logs/run_output.log
+          exit ${PIPESTATUS[0]}
 
-      - name: Upload session logs
+      - name: Upload logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: session-logs-${{ github.run_id }}
-          path: logs/
-          if-no-files-found: ignore
-
-      - name: Upload error screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: error-screenshots-${{ github.run_id }}
-          path: logs/*.png
+          path: |
+            logs/*.json
+            logs/*.png
+            logs/*.log
           if-no-files-found: ignore
 
       - name: Push run logs to repo
@@ -117,6 +115,10 @@ jobs:
           if ls logs/*.json 1>/dev/null 2>&1; then
             mkdir -p run_logs/${{ github.run_id }}
             cp logs/*.json run_logs/${{ github.run_id }}/
+            # Also save the console output if available
+            if [ -f logs/run_output.log ]; then
+              cp logs/run_output.log run_logs/${{ github.run_id }}/
+            fi
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git pull --rebase origin ${{ github.ref_name }} 2>/dev/null || true
