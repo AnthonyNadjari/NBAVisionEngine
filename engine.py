@@ -1,17 +1,19 @@
 """
-NBAVision Engine — Orchestration: scrape → filter → score → LLM → validate → post.
-Respects session limits, logging, and error handling (Sections 11–15).
+NBAVision Engine — Orchestration: scrape -> filter -> score -> LLM -> validate -> post.
+Respects session limits, logging, and error handling (Sections 11-15).
 """
 import os
 import random
 import time
 from datetime import datetime, timezone
 from filter_tweets import filter_tweets, minutes_since_post
-from scorer import rank_and_top, compute_score
+from scorer import rank_and_top
 from llm_client import call_llm
 from reply_validator import validate_reply
 from poster import post_reply, wait_before_next_tweet
 from session_log import write_session_log, build_session_log
+from auth import save_session_state
+from notify import notify_session_summary
 from config import (
     MAX_REPLIES,
     MAX_REPLIES_PER_AUTHOR,
@@ -19,6 +21,7 @@ from config import (
     CYCLE_INTERVAL_JITTER_SEC,
     MAX_CONSECUTIVE_ERRORS,
     MAX_POSTING_FAILURES,
+    DRY_RUN,
 )
 
 
@@ -42,26 +45,29 @@ def run_session(page, context, *, browser, playwright_instance):
     """
     run_id = os.environ.get("NBAVISION_RUN_ID")
     start_time = datetime.now(timezone.utc).isoformat()
-    seen_tweet_ids = set()
-    replied_author_count = {}
-    session_replies = []
-    replies_posted = []  # for session log: { tweet_url, reply_text, posted_at }
+    seen_tweet_ids: set[str] = set()
+    replied_author_count: dict[str, int] = {}
+    session_replies: list[str] = []
+    replies_posted: list[dict] = []
     total_scraped = 0
     total_filtered = 0
     total_scored = 0
     total_llm_calls = 0
     total_replied = 0
     total_skipped = 0
-    skip_reasons = {}
-    response_lengths = []
-    engagement_velocities = []
-    cycles = []
-    events = [_event("session_start", {"max_replies": MAX_REPLIES})]
+    skip_reasons: dict[str, int] = {}
+    response_lengths: list[int] = []
+    engagement_velocities: list[float] = []
+    cycles: list[dict] = []
+    events = [_event("session_start", {"max_replies": MAX_REPLIES, "dry_run": DRY_RUN})]
 
     consecutive_errors = 0
     posting_failures = 0
     cookie_valid = True
     cycle_index = 0
+
+    if DRY_RUN:
+        print("*** DRY RUN MODE — no replies will be posted ***", flush=True)
 
     while total_replied < MAX_REPLIES and cookie_valid and posting_failures < MAX_POSTING_FAILURES:
         if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
@@ -75,11 +81,14 @@ def run_session(page, context, *, browser, playwright_instance):
             raw = scrape_all_keywords(browser, page, context)
             total_scraped += len(raw)
             events.append(_event("scrape_done", {"raw_count": len(raw)}))
+            consecutive_errors = max(0, consecutive_errors - 1)
         except Exception as e:
             consecutive_errors += 1
             events.append(_event("scrape_error", {"error": str(e)}))
-            print(f"[Cycle {cycle_index}] Scrape error: {e}", flush=True)
-            time.sleep(random.uniform(60, 120))
+            print(f"[Cycle {cycle_index}] Scrape error ({consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}", flush=True)
+            backoff = min(300, 60 * (2 ** (consecutive_errors - 1)))
+            time.sleep(backoff + random.uniform(0, 30))
+            cycle_index += 1
             continue
 
         accepted, cycle_skip = filter_tweets(raw, seen_tweet_ids)
@@ -118,7 +127,6 @@ def run_session(page, context, *, browser, playwright_instance):
             tweet_url = f"https://x.com/{author}/status/{tweet_id}"
             seen_tweet_ids.add(tweet_id)
 
-            # LLM
             total_llm_calls += 1
             print(f"  Evaluating @{author} ({tweet_id})...", flush=True)
             events.append(_event("llm_call", {"tweet_id": tweet_id, "author": author}))
@@ -127,7 +135,7 @@ def run_session(page, context, *, browser, playwright_instance):
                 total_skipped += 1
                 skip_reasons["llm_timeout"] = skip_reasons.get("llm_timeout", 0) + 1
                 consecutive_errors += 1
-                print(f"  Skip: LLM timeout", flush=True)
+                print("  Skip: LLM timeout", flush=True)
                 events.append(_event("llm_skip", {"tweet_id": tweet_id, "reason": "llm_timeout"}))
                 continue
             decision = (llm_result.get("decision") or "").upper()
@@ -142,8 +150,8 @@ def run_session(page, context, *, browser, playwright_instance):
                 events.append(_event("llm_skip", {"tweet_id": tweet_id, "reason": reason or "skip", "decision": decision}))
                 continue
 
-            response = response[:180].strip()  # Section 8: ≤180 characters
-            reply_preview = (response[:60] + "…") if len(response) > 60 else response
+            response = response[:180].strip()
+            reply_preview = (response[:60] + "...") if len(response) > 60 else response
             print(f"  Reply ({len(response)} chars): {reply_preview!r}", flush=True)
             valid, fail_reason = validate_reply(response, session_replies)
             if not valid:
@@ -158,11 +166,11 @@ def run_session(page, context, *, browser, playwright_instance):
             success, err = post_reply(page, tweet_url, response)
             if not success:
                 posting_failures += 1
-                print(f"  Post failed: {err}", flush=True)
+                print(f"  Post failed ({posting_failures}/{MAX_POSTING_FAILURES}): {err}", flush=True)
                 if posting_failures >= MAX_POSTING_FAILURES:
                     events.append(_event("post_fail", {"tweet_id": tweet_id, "error": str(err)}))
                     break
-                # Retry once (Section 13)
+                time.sleep(random.uniform(10, 20))
                 success, err = post_reply(page, tweet_url, response)
                 if not success:
                     total_skipped += 1
@@ -187,8 +195,13 @@ def run_session(page, context, *, browser, playwright_instance):
 
             wait_before_next_tweet()
 
+        # Save session state after each cycle so cookies stay fresh
+        try:
+            save_session_state(context)
+        except Exception:
+            pass
+
         cycle_index += 1
-        # Cycle interval ± jitter (Section 14)
         if total_replied < MAX_REPLIES:
             interval_sec = CYCLE_INTERVAL_MINUTES * 60 + random.uniform(-CYCLE_INTERVAL_JITTER_SEC, CYCLE_INTERVAL_JITTER_SEC)
             mins = max(1, int(interval_sec / 60))
@@ -205,7 +218,11 @@ def run_session(page, context, *, browser, playwright_instance):
     print(f"  Scraped: {total_scraped}, passed filter: {total_filtered}, scored: {total_scored}", flush=True)
     if skip_reasons:
         print(f"  Skip reasons: {dict(skip_reasons)}", flush=True)
+    if DRY_RUN:
+        print("  *** DRY RUN — no replies were actually posted ***", flush=True)
     print("---", flush=True)
+
+    notify_session_summary(total_replied, total_skipped, skip_reasons if skip_reasons else None)
 
     log_data = build_session_log(
         start_time=start_time,

@@ -1,6 +1,7 @@
 """
 NBAVision Engine — Scraping Twitter via Playwright DOM (Spec Section 4).
 Playwright sync API is not thread-safe; keywords are scraped sequentially.
+Each cycle samples a random subset of keywords to reduce detection footprint.
 """
 import random
 import re
@@ -11,6 +12,7 @@ from playwright.sync_api import Page
 
 from config import (
     KEYWORDS,
+    KEYWORDS_PER_CYCLE,
     TWITTER_SEARCH_BASE,
     SEARCH_WAIT_SEC_MIN,
     SEARCH_WAIT_SEC_MAX,
@@ -37,7 +39,6 @@ def _parse_int_from_aria(aria_label: str | None) -> int:
 def extract_tweets_from_page(page: Page) -> list[dict]:
     """
     Extract tweets from current page using article[data-testid="tweet"].
-    Returns list of dicts with: tweet_id, text, username, likes, replies, retweets, timestamp, (followers filled later).
     """
     articles = page.locator('article[data-testid="tweet"]')
     count = articles.count()
@@ -45,7 +46,6 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
     for i in range(count):
         try:
             art = articles.nth(i)
-            # tweet_id — from link to tweet or from article
             link_el = art.locator('a[href*="/status/"]').first
             href = link_el.get_attribute("href") if link_el.count() else None
             tweet_id = None
@@ -54,16 +54,13 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
                 if match:
                     tweet_id = match.group(1)
 
-            # text via div[lang]
             text_el = art.locator('div[data-testid="tweetText"]').first
             text = (text_el.inner_text() if text_el.count() else "") or ""
 
-            # username from anchor href
             user_el = art.locator('a[href^="/"][role="link"]').first
             user_href = user_el.get_attribute("href") if user_el.count() else None
             username = (user_href or "").strip("/").split("/")[0] if user_href else ""
 
-            # engagement
             like_el = art.locator('[data-testid="like"]').first
             reply_el = art.locator('[data-testid="reply"]').first
             retweet_el = art.locator('[data-testid="retweet"]').first
@@ -71,7 +68,6 @@ def extract_tweets_from_page(page: Page) -> list[dict]:
             replies = _parse_int_from_aria(reply_el.get_attribute("aria-label") if reply_el.count() else None)
             retweets = _parse_int_from_aria(retweet_el.get_attribute("aria-label") if retweet_el.count() else None)
 
-            # timestamp
             time_el = art.locator("time").first
             datetime_attr = time_el.get_attribute("datetime") if time_el.count() else None
             timestamp = datetime_attr or ""
@@ -98,9 +94,7 @@ def fetch_followers_for_tweets(
     tweets: list[dict],
     max_profiles: int = MAX_PROFILES_OPENED_PER_CYCLE,
 ) -> None:
-    """
-    Open profile in new tab, get followers from aria-label, close tab. Mutates tweets[].followers.
-    """
+    """Open profile in new tab, get followers, close tab. Mutates tweets[].followers."""
     base_url = "https://x.com"
     opened = 0
     for t in tweets:
@@ -116,7 +110,6 @@ def fetch_followers_for_tweets(
         try:
             new_page.goto(profile_url, wait_until="domcontentloaded", timeout=15000)
             _wait_random(1.5, 3.5)
-            # Followers: aria-label often on a link like "123 Followers"
             follower_el = new_page.locator('a[href*="/followers"]').first
             if follower_el.count():
                 aria = follower_el.get_attribute("aria-label")
@@ -131,16 +124,13 @@ def fetch_followers_for_tweets(
 
 
 def scrape_keyword(page: Page, keyword: str) -> list[dict]:
-    """
-    Processus exact par keyword (Section 4.3):
-    goto search url, wait 4–6s, scroll 3 times (random 1200–2000), wait 2–4s each, extract tweets.
-    """
+    """Navigate to search URL, scroll, extract tweets."""
     query = quote_plus(keyword)
     url = TWITTER_SEARCH_BASE.format(query=query)
     page.goto(url, wait_until="domcontentloaded", timeout=30000)
     _wait_random(SEARCH_WAIT_SEC_MIN, SEARCH_WAIT_SEC_MAX)
 
-    for scroll_num in range(3):
+    for _ in range(3):
         delta = random.randint(SCROLL_DELTA_MIN, SCROLL_DELTA_MAX)
         page.mouse.wheel(0, delta)
         _wait_random(SCROLL_WAIT_SEC_MIN, SCROLL_WAIT_SEC_MAX)
@@ -154,24 +144,38 @@ def scrape_keyword(page: Page, keyword: str) -> list[dict]:
 
 def scrape_all_keywords(browser, page: Page, context) -> list[dict]:
     """
-    Scrape all KEYWORDS sequentially (Playwright sync API is not thread-safe), then fetch followers.
-    Returns list of tweet dicts; duplicates by tweet_id are deduplicated.
+    Sample a random subset of KEYWORDS each cycle, scrape them sequentially,
+    then fetch followers. Deduplicates by tweet_id.
     """
-    seen_ids = set()
-    all_tweets = []
-    for i, keyword in enumerate(KEYWORDS, 1):
+    sample_size = min(KEYWORDS_PER_CYCLE, len(KEYWORDS))
+    keywords = random.sample(KEYWORDS, sample_size)
+    print(f"    Sampling {sample_size}/{len(KEYWORDS)} keywords this cycle", flush=True)
+
+    seen_ids: set[str] = set()
+    all_tweets: list[dict] = []
+    consecutive_kw_errors = 0
+
+    for i, keyword in enumerate(keywords, 1):
+        if consecutive_kw_errors >= 5:
+            print("    Circuit breaker: 5 consecutive keyword errors, pausing 60s", flush=True)
+            _wait_random(55, 65)
+            consecutive_kw_errors = 0
+
         try:
-            print(f"    Keyword {i}/{len(KEYWORDS)}: {keyword!r}", flush=True)
+            print(f"    Keyword {i}/{len(keywords)}: {keyword!r}", flush=True)
             batch = scrape_keyword(page, keyword)
-            new_in_batch = sum(1 for t in batch if (t.get("tweet_id") or "") not in seen_ids)
+            new_in_batch = 0
             for t in batch:
                 tid = t.get("tweet_id")
                 if tid and tid not in seen_ids:
                     seen_ids.add(tid)
                     all_tweets.append(t)
+                    new_in_batch += 1
             print(f"      -> {len(batch)} tweets, {new_in_batch} new (total unique: {len(all_tweets)})", flush=True)
+            consecutive_kw_errors = 0
         except Exception as ex:
-            print(f"      -> error: {ex}", flush=True)
+            consecutive_kw_errors += 1
+            print(f"      -> error ({consecutive_kw_errors}/5): {ex}", flush=True)
             continue
 
     print(f"    Fetching followers for up to {MAX_PROFILES_OPENED_PER_CYCLE} profiles...", flush=True)
