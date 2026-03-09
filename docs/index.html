@@ -140,12 +140,12 @@
       </div>
     </section>
 
-    <!-- Account stats (follower growth) -->
+    <!-- Follower growth chart -->
     <section class="card" id="statsCard">
-      <h2 class="card-title">Account stats</h2>
-      <p class="help-text" style="margin-bottom:0.75rem">Follower count per day (last value of the day from each run). Set <code>BOT_PROFILE_USERNAME</code> in the runner to enable.</p>
-      <div id="statsChartWrap" style="position:relative;height:220px">
-        <canvas id="statsChart"></canvas>
+      <h2 class="card-title">Follower growth (chart)</h2>
+      <p class="help-text" style="margin-bottom:0.75rem">One point per day (last value from that day). Set <code>BOT_PROFILE_USERNAME</code> in repo variables to enable.</p>
+      <div id="statsChartWrap" style="position:relative;height:260px;min-height:260px">
+        <canvas id="statsChart" role="img" aria-label="Follower growth chart"></canvas>
       </div>
       <div id="statsNoData" class="stat" style="color:var(--text-muted);display:none">No stats yet.</div>
     </section>
