@@ -129,6 +129,11 @@
       <div id="triggerFeedback" class="trigger-feedback" style="display:none"></div>
       <p id="statusError" class="error-msg" style="display:none"></p>
       <p id="tokenLink" class="help-text" style="display:none;margin-top:0.75rem"></p>
+      <p id="bookmarkHint" class="help-text" style="display:none;margin-top:0.75rem">Bookmark this page to return with your token and trigger runs from here. Keep the bookmark private (token is in the URL).</p>
+      <div id="bookmarkCopyRow" class="btn-row" style="display:none;margin-top:0.5rem">
+        <button type="button" class="btn btn-secondary" id="copyBookmarkBtn">Copy bookmark link</button>
+        <span id="copyBookmarkFeedback" class="trigger-feedback" style="display:none"></span>
+      </div>
     </section>
 
     <!-- Run history -->
@@ -294,13 +299,37 @@
       triggerBtn.addEventListener('click', function() { triggerWorkflow(false); });
       triggerDryBtn.addEventListener('click', function() { triggerWorkflow(true); });
 
+      function updateBookmarkUI() {
+        var hasToken = !!getToken();
+        var hint = document.getElementById('bookmarkHint');
+        var row = document.getElementById('bookmarkCopyRow');
+        if (hint) hint.style.display = hasToken ? 'block' : 'none';
+        if (row) row.style.display = hasToken ? 'flex' : 'none';
+      }
+
+      var copyBookmarkBtn = document.getElementById('copyBookmarkBtn');
+      var copyBookmarkFeedback = document.getElementById('copyBookmarkFeedback');
+      if (copyBookmarkBtn) {
+        copyBookmarkBtn.addEventListener('click', function() {
+          var url = location.href;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+              if (copyBookmarkFeedback) { copyBookmarkFeedback.textContent = 'Copied!'; copyBookmarkFeedback.style.color = 'var(--success)'; copyBookmarkFeedback.style.display = 'inline'; setTimeout(function() { copyBookmarkFeedback.style.display = 'none'; }, 2000); }
+            });
+          } else {
+            if (copyBookmarkFeedback) { copyBookmarkFeedback.textContent = 'Copy the URL from the address bar'; copyBookmarkFeedback.style.display = 'inline'; }
+          }
+        });
+      }
+
       function fetchStatus() {
         if (statusText) statusText.textContent = 'Loading...';
         if (statusError) statusError.style.display = 'none';
         if (tokenLink) tokenLink.style.display = 'none';
 
         var token = getToken();
-        if (!token) { setStatus('idle', ''); showTokenHelp(); return; }
+        if (!token) { setStatus('idle', ''); showTokenHelp(); updateBookmarkUI(); return; }
+        updateBookmarkUI();
 
         apiFetch('/actions/runs?per_page=15')
           .then(function(res) {
@@ -539,6 +568,7 @@
       });
 
       // Init
+      updateBookmarkUI();
       fetchStatus();
       fetchRunnerStatus();
       fetchSchedule();

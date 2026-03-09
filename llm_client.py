@@ -7,6 +7,7 @@ import json
 import random
 import re
 import time
+from datetime import datetime, timezone
 import requests
 from config import get_llm_api_key, get_llm_model, LLM_TIMEOUT_SECONDS, LLM_RETRY_MAX
 
@@ -56,6 +57,17 @@ ALSO SKIP if:
 - Death, serious crime, heavy politics
 - Tweet is in a language you can't reply to naturally
 - Tweet is literally just a link with no text
+
+FACTS / HALLUCINATION (CRITICAL)
+
+NEVER invent specific facts. Your reply must ONLY:
+- Comment on what the tweet actually says, or
+- Use generic opinions (e.g. "defense matters", "tough matchup") that do not assert teams, trades, or seasons.
+Do NOT claim "X played at Y last year", "he was with the Z in 2023", or any specific team/season/trade fact unless the tweet states it explicitly. When in doubt, SKIP with reason "unsure_or_invented".
+
+CONTEXT (CRITICAL)
+
+Your reply must directly address the tweet's topic. If your reply would be generic, unrelated, or could apply to any tweet, SKIP with reason "off_topic". The reply must be clearly about the same subject as the tweet.
 
 VOICE
 
@@ -146,7 +158,8 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    user_content = f"Tweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    user_content = f"Today (UTC): {today}\n\nTweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
 
     max_attempts = LLM_RETRY_MAX + 1
     max_429_backoffs = 5

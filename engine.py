@@ -192,7 +192,7 @@ def run_session(page, context, *, browser, playwright_instance):
             response = response[:180].strip()
             reply_preview = (response[:60] + "...") if len(response) > 60 else response
             print(f"  @{author}: Reply ({len(response)} chars): {reply_preview!r}", flush=True)
-            valid, fail_reason = validate_reply(response, session_replies)
+            valid, fail_reason = validate_reply(response, session_replies, tweet_text=tweet.get("text") or "")
             if not valid:
                 total_skipped += 1
                 skip_reasons[fail_reason or "validation"] = skip_reasons.get(fail_reason or "validation", 0) + 1

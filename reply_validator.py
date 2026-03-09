@@ -40,6 +40,33 @@ def _count_sentences(text: str) -> int:
     return max(1, len(re.split(r"[.!?]+", text.strip())))
 
 
+# Phrases that often signal invented team/season facts — reject reply if present
+INVENTED_PHRASE_BLOCKLIST = [
+    "last year at",
+    "last season at",
+    "when he was with the",
+    "when he played for",
+    "back when he was on",
+    "in 2023",
+    "in 2022",
+    "in 2021",
+]
+
+
+def _reply_has_invented_phrase(text: str) -> bool:
+    """True if reply contains a blocklisted phrase suggesting invented facts."""
+    t = (text or "").lower()
+    return any(phrase in t for phrase in INVENTED_PHRASE_BLOCKLIST)
+
+
+def _meaningful_word_overlap(tweet_text: str, reply_text: str) -> bool:
+    """True if reply shares at least one meaningful word (3+ chars, not common stop) with tweet."""
+    stop = {"the", "and", "for", "was", "but", "not", "you", "all", "can", "had", "her", "his", "its", "may", "now", "our", "out", "see", "has", "him", "how", "man", "new", "old", "any", "day", "get", "got", "let", "put", "say", "too", "use", "who", "did", "get", "got", "let", "put", "say", "too", "use"}
+    tweet_words = {w.lower() for w in re.findall(r"\b[a-zA-Z]{3,}\b", tweet_text or "") if w.lower() not in stop}
+    reply_words = {w.lower() for w in re.findall(r"\b[a-zA-Z]{3,}\b", reply_text or "")}
+    return bool(tweet_words & reply_words)
+
+
 def _tfidf_similarity(new_text: str, previous_texts: list[str]) -> float:
     """Return max similarity between new_text and any of previous_texts (0..1)."""
     if not previous_texts or not (new_text or "").strip():
@@ -60,6 +87,7 @@ def _tfidf_similarity(new_text: str, previous_texts: list[str]) -> float:
 def validate_reply(
     response: str,
     session_replies: list[str],
+    tweet_text: str | None = None,
 ) -> tuple[bool, str | None]:
     """
     Vérifier (Section 9):
@@ -67,10 +95,19 @@ def validate_reply(
     - Moins de 3 emojis dans session (total)
     - Pas plus de 2 phrases
     - Similarité TF-IDF < 0.7 avec toutes réponses précédentes
+    - Optional: reply must share at least one meaningful word with tweet (if tweet_text given)
+    - Optional: blocklist of phrases that suggest invented facts
     Returns (valid, reason). valid=True means OK to post.
     """
     if not (response or "").strip():
         return False, "empty"
+
+    if _reply_has_invented_phrase(response):
+        return False, "invented_phrase_blocklist"
+
+    if tweet_text and (tweet_text or "").strip() and len((response or "").strip()) > 40:
+        if not _meaningful_word_overlap(tweet_text, response):
+            return False, "no_relevance_to_tweet"
 
     first = _first_word(response)
     if first:

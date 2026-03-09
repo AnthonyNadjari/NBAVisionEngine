@@ -24,9 +24,9 @@ def compute_score(tweet: dict) -> float:
     text_quality = math.log(max(len(text), 1) + 1)
 
     score = (
-        0.6 * engagement_velocity
+        0.7 * engagement_velocity
         + 0.25 * freshness_score
-        + 0.15 * text_quality
+        + 0.05 * text_quality
     )
     return score
 

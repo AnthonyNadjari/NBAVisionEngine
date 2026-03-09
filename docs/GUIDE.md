@@ -123,7 +123,11 @@ The job gets picked up by your PC within seconds. Click on the run to see live l
 
 ### Automatic schedule
 
-The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow checks every 30 minutes and triggers the main engine when the current time matches a slot. Your PC and runner must be on at those times. If the runner is offline, the job queues and runs when the runner comes back online.
+The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow runs every 30 minutes and triggers the main engine when the current UTC time is within **5 minutes** of a slot.
+
+**Important:** All schedule times are in **UTC**. If you are in the UK, 9:00 UK = 9:00 UTC in winter (GMT) or 8:00 UTC in summer (BST). Adjust the dashboard times accordingly.
+
+**If scheduled runs don't fire:** GitHub Actions scheduled workflows can be delayed (often 5–15+ minutes). Check the **Actions** tab for the "Scheduler" workflow runs at :00 and :30 past each hour; if they run but the main workflow doesn't trigger, ensure repo **Settings → Actions → General → Workflow permissions** is set to **Read and write** for `GITHUB_TOKEN` so the scheduler can trigger the engine. Your PC and runner must be on at the scheduled times. If the runner is offline, the job queues and runs when the runner comes back online.
 
 ### Check if the runner is active
 
@@ -167,6 +171,8 @@ The dashboard at **https://anthonynadjari.github.io/NBAVisionEngine/** shows:
 7. Open the dashboard URL with `#` followed by your token:
    `https://anthonynadjari.github.io/NBAVisionEngine/#github_pat_YOUR_TOKEN_HERE`
 8. The token is stored in your browser's session storage (cleared when you close the tab). You only need to do this once per browser session.
+
+**Trigger runs from a bookmark (no redirect):** You can bookmark the dashboard with your token in the URL so you don't have to paste the token each time. After opening the dashboard once with `#YOUR_TOKEN` (or `?t=YOUR_TOKEN`), use **Copy bookmark link** on the page to copy the full URL, then paste it into a new tab and add that tab to your bookmarks. When you open the bookmark later, the dashboard loads with your token and you can click **Trigger run** or **Trigger dry run** immediately. Keep the bookmark private — the token is in the URL and in browser history. Use a fine-grained token with minimal scope (Actions: read+write, Contents: read) and rotate it if the bookmark is ever exposed.
 
 ---
 
