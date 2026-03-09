@@ -158,16 +158,25 @@
       <p id="scheduleError" class="error-msg" style="display:none"></p>
     </section>
 
-    <!-- Last run summary (dropdown, last) -->
+    <!-- Current run summary (dropdown, last) -->
     <section class="card" id="summaryCard">
       <h2 class="card-title summary-dropdown-header" id="summaryDropdownHeader" style="cursor:pointer;user-select:none" title="Click to expand or collapse">
         <span class="summary-dropdown-arrow" id="summaryDropdownArrow" aria-hidden="true">▸</span>
-        Last run summary
+        Current run summary
       </h2>
       <div id="summaryDropdownBody" style="display:none">
         <div id="summaryStats" class="stat" style="margin-bottom:0.75rem"></div>
         <div id="summaryNoData" class="stat" style="color:var(--text-muted);display:none"></div>
         <div id="repliesPosted" style="margin-top:0.75rem"></div>
+        <div class="summary-sub-dropdown" style="margin-top:1rem;display:none">
+          <h3 class="card-title summary-sub-header" id="skipReasonsHeader" style="cursor:pointer;user-select:none;font-size:0.85rem" title="Click to expand or collapse">
+            <span class="summary-dropdown-arrow" id="skipReasonsArrow" aria-hidden="true">▸</span>
+            Skip reasons (breakdown)
+          </h3>
+          <div id="skipReasonsBody" style="display:none">
+            <div id="skipReasonsList" class="stat" style="font-size:0.85rem;line-height:1.6"></div>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -438,11 +447,19 @@
         lines.push('Scraped: <strong>' + (data.total_scraped || 0) + '</strong> · Filtered: <strong>' + (data.total_filtered || 0) + '</strong> · Replied: <strong>' + (data.total_replied || 0) + '</strong> · Skipped: <strong>' + (data.total_skipped || 0) + '</strong>');
         if (data.start_time) lines.push('Started: ' + new Date(data.start_time).toLocaleString());
         if (data.end_time) lines.push('Ended: ' + new Date(data.end_time).toLocaleString());
-        if (data.skip_reasons && Object.keys(data.skip_reasons).length) {
-          var parts = []; for (var k in data.skip_reasons) parts.push(k + ': ' + data.skip_reasons[k]);
-          lines.push('Skip reasons: ' + parts.join(', '));
-        }
         summaryStats.innerHTML = lines.join('<br>');
+        var skipReasonsBlock = document.querySelector('.summary-sub-dropdown');
+        if (data.skip_reasons && Object.keys(data.skip_reasons).length) {
+          var skipEl = document.getElementById('skipReasonsList');
+          if (skipEl) {
+            var parts = [];
+            for (var k in data.skip_reasons) parts.push('<span style="display:inline-block;margin-right:1rem;margin-bottom:0.25rem"><strong>' + k + '</strong>: ' + data.skip_reasons[k] + '</span>');
+            skipEl.innerHTML = parts.join('');
+          }
+          if (skipReasonsBlock) skipReasonsBlock.style.display = 'block';
+        } else {
+          if (skipReasonsBlock) skipReasonsBlock.style.display = 'none';
+        }
         if (repliesPosted && data.replies_posted && data.replies_posted.length) {
           var html = '<strong>Replies posted (' + data.replies_posted.length + '):</strong>';
           data.replies_posted.forEach(function(item) {
@@ -475,6 +492,12 @@
         if (summaryStats) summaryStats.innerHTML = '';
         if (repliesPosted) repliesPosted.innerHTML = '';
         if (summaryNoData) summaryNoData.style.display = 'none';
+        var skipReasonsList = document.getElementById('skipReasonsList');
+        if (skipReasonsList) skipReasonsList.innerHTML = '';
+        var subBlock = document.querySelector('.summary-sub-dropdown');
+        if (subBlock) subBlock.style.display = 'none';
+        if (skipReasonsBody) skipReasonsBody.style.display = 'none';
+        if (skipReasonsArrow) skipReasonsArrow.classList.remove('open');
         fetchStatus();
         fetchRunnerStatus();
       });
@@ -577,7 +600,7 @@
         });
       });
 
-      // Last run summary dropdown
+      // Current run summary dropdown
       var summaryDropdownHeader = document.getElementById('summaryDropdownHeader');
       var summaryDropdownArrow = document.getElementById('summaryDropdownArrow');
       var summaryDropdownBody = document.getElementById('summaryDropdownBody');
@@ -586,6 +609,17 @@
           var isOpen = summaryDropdownBody.style.display !== 'none';
           summaryDropdownBody.style.display = isOpen ? 'none' : 'block';
           if (summaryDropdownArrow) summaryDropdownArrow.classList.toggle('open', !isOpen);
+        });
+      }
+      // Skip reasons sub-dropdown
+      var skipReasonsHeader = document.getElementById('skipReasonsHeader');
+      var skipReasonsArrow = document.getElementById('skipReasonsArrow');
+      var skipReasonsBody = document.getElementById('skipReasonsBody');
+      if (skipReasonsHeader && skipReasonsBody) {
+        skipReasonsHeader.addEventListener('click', function() {
+          var isOpen = skipReasonsBody.style.display !== 'none';
+          skipReasonsBody.style.display = isOpen ? 'none' : 'block';
+          if (skipReasonsArrow) skipReasonsArrow.classList.toggle('open', !isOpen);
         });
       }
 
