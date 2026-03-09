@@ -91,6 +91,9 @@
     .schedule-toggle input:checked + .slider::before { transform: translateX(18px); background: #fff; }
     .schedule-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; padding: 0.2rem 0.4rem; border-radius: 4px; }
     .schedule-remove:hover { color: var(--error); background: rgba(239,68,68,0.15); }
+    .summary-dropdown-header:hover { color: var(--text); }
+    .summary-dropdown-arrow { display: inline-block; width: 1em; margin-right: 0.35rem; transition: transform 0.2s; }
+    .summary-dropdown-arrow.open { transform: rotate(90deg); }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
 </head>
@@ -142,14 +145,6 @@
       <div id="runHistory" class="stat">Loading...</div>
     </section>
 
-    <!-- Last run summary -->
-    <section class="card" id="summaryCard">
-      <h2 class="card-title">Last run summary</h2>
-      <div id="summaryStats" class="stat" style="margin-bottom:0.75rem"></div>
-      <div id="summaryNoData" class="stat" style="color:var(--text-muted);display:none"></div>
-      <div id="repliesPosted" style="margin-top:0.75rem"></div>
-    </section>
-
     <!-- Schedule editor -->
     <section class="card" id="scheduleCard">
       <h2 class="card-title">Schedule</h2>
@@ -161,6 +156,19 @@
       </div>
       <div id="scheduleFeedback" class="trigger-feedback" style="display:none"></div>
       <p id="scheduleError" class="error-msg" style="display:none"></p>
+    </section>
+
+    <!-- Last run summary (dropdown, last) -->
+    <section class="card" id="summaryCard">
+      <h2 class="card-title summary-dropdown-header" id="summaryDropdownHeader" style="cursor:pointer;user-select:none" title="Click to expand or collapse">
+        <span class="summary-dropdown-arrow" id="summaryDropdownArrow" aria-hidden="true">▸</span>
+        Last run summary
+      </h2>
+      <div id="summaryDropdownBody" style="display:none">
+        <div id="summaryStats" class="stat" style="margin-bottom:0.75rem"></div>
+        <div id="summaryNoData" class="stat" style="color:var(--text-muted);display:none"></div>
+        <div id="repliesPosted" style="margin-top:0.75rem"></div>
+      </div>
     </section>
   </div>
 
@@ -442,6 +450,8 @@
           });
           repliesPosted.innerHTML = html;
         }
+        if (summaryDropdownBody) { summaryDropdownBody.style.display = 'block'; }
+        if (summaryDropdownArrow) summaryDropdownArrow.classList.add('open');
       }
 
       function tryFindLatestSummary(runs, token) {
@@ -566,6 +576,18 @@
           }
         });
       });
+
+      // Last run summary dropdown
+      var summaryDropdownHeader = document.getElementById('summaryDropdownHeader');
+      var summaryDropdownArrow = document.getElementById('summaryDropdownArrow');
+      var summaryDropdownBody = document.getElementById('summaryDropdownBody');
+      if (summaryDropdownHeader && summaryDropdownBody) {
+        summaryDropdownHeader.addEventListener('click', function() {
+          var isOpen = summaryDropdownBody.style.display !== 'none';
+          summaryDropdownBody.style.display = isOpen ? 'none' : 'block';
+          if (summaryDropdownArrow) summaryDropdownArrow.classList.toggle('open', !isOpen);
+        });
+      }
 
       // Init
       updateBookmarkUI();
