@@ -16,6 +16,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
 from auth import launch_and_auth, save_session_state
 from engine import run_session
 from notify import notify_auth_failure
+from profile_stats import run_at_start as profile_stats_run_at_start
 from session_log import write_session_log, build_session_log
 from config import (
     MAX_REPLIES,
@@ -80,6 +81,8 @@ def main() -> int:
 
     pw, browser, context, page = result[0], result[1], result[2], result[3]
     print("Auth OK. Session started.", flush=True)
+
+    profile_stats_run_at_start(page)
 
     try:
         log_data = run_session(page, context, browser=browser, playwright_instance=pw)

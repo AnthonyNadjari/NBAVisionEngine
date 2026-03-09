@@ -215,6 +215,10 @@ BROWSER_VIEWPORT = {"width": 1280, "height": 720}
 # Cookie / state persistence
 STATE_FILE = PROJECT_ROOT / "state.json"
 
+# Stats tracker (follower count per day, scraped at run start)
+BOT_PROFILE_USERNAME = os.getenv("BOT_PROFILE_USERNAME", "").strip()
+STATS_FILE = PROJECT_ROOT / "docs" / "stats.json"
+
 # Dry-run: scrape + LLM but do NOT post replies
 DRY_RUN = os.getenv("DRY_RUN", "").strip().lower() in ("1", "true", "yes")
 

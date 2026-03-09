@@ -96,6 +96,7 @@
     .summary-dropdown-arrow.open { transform: rotate(90deg); }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
   <div class="court-bg"></div>
@@ -137,6 +138,16 @@
         <button type="button" class="btn btn-secondary" id="copyBookmarkBtn">Copy bookmark link</button>
         <span id="copyBookmarkFeedback" class="trigger-feedback" style="display:none"></span>
       </div>
+    </section>
+
+    <!-- Account stats (follower growth) -->
+    <section class="card" id="statsCard">
+      <h2 class="card-title">Account stats</h2>
+      <p class="help-text" style="margin-bottom:0.75rem">Follower count per day (last value of the day from each run). Set <code>BOT_PROFILE_USERNAME</code> in the runner to enable.</p>
+      <div id="statsChartWrap" style="position:relative;height:220px">
+        <canvas id="statsChart"></canvas>
+      </div>
+      <div id="statsNoData" class="stat" style="color:var(--text-muted);display:none">No stats yet.</div>
     </section>
 
     <!-- Run history -->
@@ -221,6 +232,56 @@
         var t = setTimeout(function() { c.abort(); }, 12000);
         opts.signal = c.signal;
         return fetch(apiUrl(path), opts).finally(function() { clearTimeout(t); });
+      }
+
+      function rawUrl(path) {
+        return 'https://raw.githubusercontent.com/' + repo.owner + '/' + repo.repo + '/main/' + path.replace(/^\//, '');
+      }
+
+      var statsChartInstance = null;
+      function fetchStats() {
+        var wrap = document.getElementById('statsChartWrap');
+        var noData = document.getElementById('statsNoData');
+        if (!wrap || !noData) return;
+        fetch(rawUrl('docs/stats.json'), { cache: 'no-store' })
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(data) {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+              wrap.style.display = 'none';
+              noData.style.display = 'block';
+              noData.textContent = 'No stats yet.';
+              return;
+            }
+            var sorted = data.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+            var labels = sorted.map(function(d) { return d.date || ''; });
+            var followers = sorted.map(function(d) { return d.followers != null ? d.followers : null; });
+            wrap.style.display = 'block';
+            noData.style.display = 'none';
+            var ctx = document.getElementById('statsChart');
+            if (!ctx) return;
+            if (statsChartInstance) statsChartInstance.destroy();
+            statsChartInstance = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [{ label: 'Followers', data: followers, borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', fill: true, tension: 0.2 }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { ticks: { maxRotation: 45, color: '#94a3b8', maxTicksLimit: 12 } },
+                  y: { beginAtZero: false, ticks: { color: '#94a3b8' } }
+                }
+              }
+            });
+          })
+          .catch(function() {
+            wrap.style.display = 'none';
+            noData.style.display = 'block';
+            noData.textContent = 'Could not load stats.';
+          });
       }
 
       var statusBadge = document.getElementById('statusBadge');
@@ -500,6 +561,7 @@
         if (skipReasonsArrow) skipReasonsArrow.classList.remove('open');
         fetchStatus();
         fetchRunnerStatus();
+        fetchStats();
       });
 
       // ---- Schedule editor ----
@@ -628,6 +690,7 @@
       fetchStatus();
       fetchRunnerStatus();
       fetchSchedule();
+      fetchStats();
     })();
   </script>
 </body>

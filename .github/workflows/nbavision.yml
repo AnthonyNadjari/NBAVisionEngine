@@ -92,6 +92,7 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL || 'llama-3.1-8b-instant' }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BOT_PROFILE_USERNAME: ${{ vars.BOT_PROFILE_USERNAME || '' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           NBAVISION_RUN_ID: ${{ github.run_id }}
         run: |
@@ -109,19 +110,24 @@ jobs:
             logs/*.log
           if-no-files-found: ignore
 
-      - name: Push run logs to repo
+      - name: Push run logs and stats to repo
         if: always()
         run: |
+          COMMIT_MSG=""
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin ${{ github.ref_name }} 2>/dev/null || true
           if ls logs/*.json 1>/dev/null 2>&1; then
             mkdir -p run_logs/${{ github.run_id }}
             cp logs/*.json run_logs/${{ github.run_id }}/
-            # Also save the console output if available
             if [ -f logs/run_output.log ]; then
               cp logs/run_output.log run_logs/${{ github.run_id }}/
             fi
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git pull --rebase origin ${{ github.ref_name }} 2>/dev/null || true
             git add run_logs/
-            git diff --staged --quiet || (git commit -m "Run logs: ${{ github.run_id }}" && git push)
+            COMMIT_MSG="Run logs: ${{ github.run_id }}"
           fi
+          if [ -f docs/stats.json ]; then
+            git add docs/stats.json
+            if [ -n "$COMMIT_MSG" ]; then COMMIT_MSG="$COMMIT_MSG, stats"; else COMMIT_MSG="Stats: ${{ github.run_id }}"; fi
+          fi
+          git diff --staged --quiet || (git commit -m "$COMMIT_MSG" && git push)
