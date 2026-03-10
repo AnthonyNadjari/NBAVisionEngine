@@ -7,6 +7,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,7 +51,7 @@ jobs:
 
             echo "  Schedule $TIME ($SCHED_TOTAL min): diff=${DIFF} min"
 
-            if [ $DIFF -le 5 ]; then
+            if [ $DIFF -le 15 ]; then
               SHOULD_TRIGGER=true
               echo "  -> MATCH! Will trigger."
             fi

@@ -123,11 +123,11 @@ The job gets picked up by your PC within seconds. Click on the run to see live l
 
 ### Automatic schedule
 
-The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow runs every 30 minutes and triggers the main engine when the current UTC time is within **5 minutes** of a slot.
+The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow runs every 30 minutes and triggers the main engine when the current UTC time is within **15 minutes** of a slot (so delayed cron runs still match).
 
 **Important:** All schedule times are in **UTC**. If you are in the UK, 9:00 UK = 9:00 UTC in winter (GMT) or 8:00 UTC in summer (BST). Adjust the dashboard times accordingly.
 
-**If scheduled runs don't fire:** GitHub Actions scheduled workflows can be delayed (often 5–15+ minutes). Check the **Actions** tab for the "Scheduler" workflow runs at :00 and :30 past each hour; if they run but the main workflow doesn't trigger, ensure repo **Settings → Actions → General → Workflow permissions** is set to **Read and write** for `GITHUB_TOKEN` so the scheduler can trigger the engine. Your PC and runner must be on at the scheduled times. If the runner is offline, the job queues and runs when the runner comes back online.
+**If scheduled runs don't fire:** (1) Check the **Actions** tab for "Scheduler" runs at :00 and :30 past each hour — do they run? (2) If Scheduler runs but the main workflow never triggers, go to **Settings → Actions → General → Workflow permissions** and set to **Read and write** for the default `GITHUB_TOKEN`. (3) Scheduled workflows can be delayed 5–15+ minutes; the 15‑minute window allows for that. (4) Your PC and runner must be on at the scheduled times. If the runner is offline, the job queues and runs when it comes back.
 
 ### Check if the runner is active
 

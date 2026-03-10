@@ -50,6 +50,8 @@ INVENTED_PHRASE_BLOCKLIST = [
     "in 2023",
     "in 2022",
     "in 2021",
+    "see them win",
+    "win one of those close games",
 ]
 
 

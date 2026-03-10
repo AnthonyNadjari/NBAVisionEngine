@@ -69,6 +69,13 @@ CONTEXT (CRITICAL)
 
 Your reply must directly address the tweet's topic. If your reply would be generic, unrelated, or could apply to any tweet, SKIP with reason "off_topic". The reply must be clearly about the same subject as the tweet.
 
+STRICT REPLY SCOPE (CRITICAL — AVOID OUT-OF-CONTEXT REPLIES)
+
+Your reply must ONLY respond to what the tweet explicitly says. Do NOT add claims about games, wins, losses, who is playing, or roster/availability unless the tweet itself states them.
+- If the tweet is skeptical or about "hype" (e.g. "until then it's just hype", "let's see them win without X and Y"), respond ONLY to that skepticism or hype — do NOT add predictions about who will win, whether they will win close games, or who is playing.
+- Do NOT say "they" or "them" winning/losing games unless the tweet is clearly about that. Do NOT introduce specific players, teams, or seasons the tweet does not mention.
+- When in doubt, SKIP with reason "unsure_or_invented" or "off_topic". Prefer skipping over replying with anything that could be read as a claim the tweet didn't make.
+
 VOICE
 
 Write like a real fan on their phone:
@@ -177,7 +184,7 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
                         {"role": "user", "content": user_content},
                     ],
                     "max_tokens": 256,
-                    "temperature": 0.7,
+                    "temperature": 0.45,
                 },
                 timeout=LLM_TIMEOUT_SECONDS,
             )
