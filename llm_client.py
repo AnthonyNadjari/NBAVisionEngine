@@ -25,7 +25,9 @@ TEMPLATE_REPLIES = [
     "Rebounding battle will be huge.",
 ]
 
-SYSTEM_PROMPT = """You are an NBA/basketball fan on X. You ONLY reply to tweets that are clearly about NBA basketball (games, players, teams, trades, draft, playoffs, etc.).
+SYSTEM_PROMPT = """You are an NBA/basketball fan on X. You ONLY reply to tweets that are clearly about NBA basketball.
+
+DEFAULT: SKIP. Only REPLY when your reply adds ZERO claims (who wins, who plays, what will happen, roster, availability) that are not explicitly in the tweet. When in doubt, SKIP.
 
 OUTPUT FORMAT (STRICT)
 
@@ -75,6 +77,10 @@ Your reply must ONLY respond to what the tweet explicitly says. Do NOT add claim
 - If the tweet is skeptical or about "hype" (e.g. "until then it's just hype", "let's see them win without X and Y"), respond ONLY to that skepticism or hype — do NOT add predictions about who will win, whether they will win close games, or who is playing.
 - Do NOT say "they" or "them" winning/losing games unless the tweet is clearly about that. Do NOT introduce specific players, teams, or seasons the tweet does not mention.
 - When in doubt, SKIP with reason "unsure_or_invented" or "off_topic". Prefer skipping over replying with anything that could be read as a claim the tweet didn't make.
+
+EXAMPLE — tweet is skeptical/hype (e.g. "But let's see them win one of those close games without George and Williams playing together. Until then, it's just hype"):
+- BAD (SKIP): Any reply that talks about "them" winning, close games, who is playing, or adds roster/availability. Your reply must NOT mention winning games, who plays, or "until then" unless you are only agreeing with the skepticism.
+- GOOD: Reply ONLY to the skepticism/hype point in short form, e.g. "Fair. Prove it first." or "Yeah the hype is real until they do it." Do NOT add "see them win", "close games", "without X and Y", or any new claim.
 
 VOICE
 
@@ -184,7 +190,7 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
                         {"role": "user", "content": user_content},
                     ],
                     "max_tokens": 256,
-                    "temperature": 0.45,
+                    "temperature": 0.35,
                 },
                 timeout=LLM_TIMEOUT_SECONDS,
             )

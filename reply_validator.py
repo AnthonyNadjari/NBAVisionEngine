@@ -52,6 +52,14 @@ INVENTED_PHRASE_BLOCKLIST = [
     "in 2021",
     "see them win",
     "win one of those close games",
+    "close games without",
+    "without george",
+    "without williams",
+    "george and williams",
+    "williams playing",
+    "playing together",
+    "until then it's just hype",
+    "win without",
 ]
 
 
@@ -59,6 +67,26 @@ def _reply_has_invented_phrase(text: str) -> bool:
     """True if reply contains a blocklisted phrase suggesting invented facts."""
     t = (text or "").lower()
     return any(phrase in t for phrase in INVENTED_PHRASE_BLOCKLIST)
+
+
+# Entities that must not appear in reply unless they appear in the tweet (avoids adding roster/game claims)
+_REPLY_ENTITY_WHITELIST_REQUIRED = (
+    "george", "williams", "james", "curry", "durant", "jokic", "giannis", "tatum", "embiid",
+    "doncic", "lakers", "celtics", "warriors", "bucks", "suns", "nuggets", "clippers", "heat",
+    "knicks", "mavericks", "thunder", "cavaliers", "grizzlies", "pelicans", "kings", "pacers",
+)
+
+
+def _reply_adds_entity_not_in_tweet(reply: str, tweet_text: str) -> bool:
+    """True if reply contains a listed entity (name/team) that the tweet does not mention."""
+    if not (reply or "").strip() or not (tweet_text or "").strip():
+        return False
+    reply_lower = reply.lower()
+    tweet_lower = tweet_text.lower()
+    for entity in _REPLY_ENTITY_WHITELIST_REQUIRED:
+        if entity in reply_lower and entity not in tweet_lower:
+            return True
+    return False
 
 
 def _meaningful_word_overlap(tweet_text: str, reply_text: str) -> bool:
@@ -106,6 +134,10 @@ def validate_reply(
 
     if _reply_has_invented_phrase(response):
         return False, "invented_phrase_blocklist"
+
+    if tweet_text and (tweet_text or "").strip():
+        if _reply_adds_entity_not_in_tweet(response, tweet_text):
+            return False, "reply_adds_entity_not_in_tweet"
 
     if tweet_text and (tweet_text or "").strip() and len((response or "").strip()) > 40:
         if not _meaningful_word_overlap(tweet_text, response):

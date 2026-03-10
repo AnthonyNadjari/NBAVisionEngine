@@ -11,6 +11,9 @@ jobs:
       contents: read
       actions: write
     steps:
+      - name: Log scheduler run
+        run: echo "Scheduler job ran at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
       - uses: actions/checkout@v4
         with:
           sparse-checkout: docs/schedule.json
@@ -19,6 +22,7 @@ jobs:
       - name: Check schedule and trigger
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           if [ ! -f docs/schedule.json ]; then
             echo "No schedule.json found, skipping"
@@ -57,10 +61,26 @@ jobs:
             fi
           done < <(jq -c '.schedules[]' docs/schedule.json)
 
-          if [ "$SHOULD_TRIGGER" = "true" ]; then
-            echo "Triggering NBAVision Engine workflow..."
-            gh workflow run nbavision.yml --ref main
-            echo "Triggered!"
-          else
+          if [ "$SHOULD_TRIGGER" != "true" ]; then
             echo "No schedule match. Not triggering."
+            exit 0
+          fi
+
+          echo "Triggering NBAVision Engine via API..."
+          HTTP=$(curl -s -w "%{http_code}" -o /tmp/trigger_body.txt \
+            -X POST \
+            -H "Authorization: bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${REPO}/actions/workflows/nbavision.yml/dispatches" \
+            -d '{"ref":"main"}')
+          echo "API response HTTP status: $HTTP"
+          if [ -s /tmp/trigger_body.txt ]; then
+            echo "API response body:"
+            cat /tmp/trigger_body.txt
+          fi
+          if [ "$HTTP" = "204" ]; then
+            echo "Triggered successfully (204)."
+          else
+            echo "::warning::Trigger returned $HTTP (expected 204). Check repo Settings -> Actions -> General -> Workflow permissions (Read and write for GITHUB_TOKEN)."
+            exit 1
           fi
