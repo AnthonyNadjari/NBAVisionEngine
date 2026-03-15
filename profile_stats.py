@@ -47,25 +47,57 @@ def scrape_profile_stats(page: Page, username: str) -> dict | None:
 
     result = {"followers": None, "following": None}
 
-    # Try aria-label on links (e.g. "1,234 Followers")
-    for label in ["followers", "following"]:
+    def try_parse_from_aria_or_text(locator, label_name: str) -> int | None:
+        """Get count from aria-label or link text. label_name is e.g. 'Followers' or 'Following'."""
         try:
-            link = page.locator(f'a[href*="/{label}"]').first
-            if link.count() == 0:
-                continue
-            aria = link.get_attribute("aria-label") or ""
+            if locator.count() == 0:
+                return None
+            aria = locator.get_attribute("aria-label") or ""
             # e.g. "1,234 Followers" or "12.5K Followers"
             num_match = re.search(r"([\d,.]+)\s*[KkMm]?\s*", aria)
             if num_match:
                 val = _parse_count(num_match.group(1).replace(",", ""))
                 if val is not None:
-                    result[label] = val
-            if result[label] is None:
-                # Fallback: text content of the link
-                text = link.inner_text()
-                val = _parse_count(text.split()[0] if text else "")
-                if val is not None:
-                    result[label] = val
+                    return val
+            text = locator.inner_text()
+            val = _parse_count((text or "").split()[0])
+            return val
+        except Exception:
+            return None
+
+    # Strategy 1: link with href containing /followers or /following
+    for label in ["followers", "following"]:
+        try:
+            link = page.locator(f'a[href*="/{label}"]').first
+            val = try_parse_from_aria_or_text(link, label.capitalize())
+            if val is not None:
+                result[label] = val
+        except Exception:
+            pass
+
+    # Strategy 2: any element with aria-label containing "X Followers" / "X Following" (X sometimes uses different structure)
+    if result["followers"] is None:
+        try:
+            el = page.locator('[aria-label*="Followers"]').first
+            if el.count() > 0:
+                aria = el.get_attribute("aria-label") or ""
+                num_match = re.search(r"([\d,.]+)\s*[KkMm]?\s*[Ff]ollowers", aria)
+                if num_match:
+                    val = _parse_count(num_match.group(1).replace(",", ""))
+                    if val is not None:
+                        result["followers"] = val
+        except Exception:
+            pass
+    if result["following"] is None:
+        try:
+            el = page.locator('[aria-label*="Following"]').first
+            if el.count() > 0:
+                aria = el.get_attribute("aria-label") or ""
+                num_match = re.search(r"([\d,.]+)\s*[KkMm]?\s*[Ff]ollowing", aria)
+                if num_match:
+                    val = _parse_count(num_match.group(1).replace(",", ""))
+                    if val is not None:
+                        result["following"] = val
         except Exception:
             pass
 

@@ -264,36 +264,42 @@
             var currentEl = document.getElementById('statsCurrentCount');
             if (currentEl && last) {
               var f = last.followers;
-              var fol = last.following;
-              if (f != null || fol != null) {
-                var parts = [];
-                if (f != null) parts.push(f.toLocaleString() + ' followers');
-                if (fol != null) parts.push(fol.toLocaleString() + ' following');
-                currentEl.textContent = 'Current: ' + parts.join(' · ');
+              if (f != null) {
+                currentEl.textContent = 'Current: ' + f.toLocaleString() + ' followers';
                 currentEl.style.display = 'block';
               } else {
-                currentEl.style.display = 'none';
+                currentEl.textContent = 'Current: — followers (not available yet)';
+                currentEl.style.display = 'block';
               }
             }
+            var hasAnyFollowerValue = followers.some(function(v) { return v != null; });
             var ctx = document.getElementById('statsChart');
             if (!ctx) return;
             if (statsChartInstance) statsChartInstance.destroy();
-            statsChartInstance = new Chart(ctx, {
-              type: 'line',
-              data: {
-                labels: labels,
-                datasets: [{ label: 'Followers', data: followers, borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', fill: true, tension: 0.2 }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { ticks: { maxRotation: 45, color: '#94a3b8', maxTicksLimit: 12 } },
-                  y: { beginAtZero: false, ticks: { color: '#94a3b8' } }
+            if (!hasAnyFollowerValue) {
+              wrap.style.display = 'none';
+              noData.style.display = 'block';
+              noData.textContent = 'No follower data yet. The chart appears when at least one run has recorded a follower count (BOT_PROFILE_USERNAME set and profile scraped).';
+            } else {
+              wrap.style.display = 'block';
+              noData.style.display = 'none';
+              statsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: labels,
+                  datasets: [{ label: 'Followers', data: followers, borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', fill: true, tension: 0.2, spanGaps: true }]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    x: { ticks: { maxRotation: 45, color: '#94a3b8', maxTicksLimit: 12 } },
+                    y: { beginAtZero: false, ticks: { color: '#94a3b8' } }
+                  }
                 }
-              }
-            });
+              });
+            }
           })
           .catch(function() {
             wrap.style.display = 'none';
