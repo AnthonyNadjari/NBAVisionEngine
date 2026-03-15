@@ -143,6 +143,7 @@
     <!-- Follower growth chart -->
     <section class="card" id="statsCard">
       <h2 class="card-title">Follower growth (chart)</h2>
+      <p id="statsCurrentCount" class="stat" style="margin-bottom:0.75rem;font-size:1rem;color:var(--accent)"></p>
       <p class="help-text" style="margin-bottom:0.75rem">One point per day (last value from that day). Set <code>BOT_PROFILE_USERNAME</code> in repo variables. Data appears after each run completes (pushed with run logs).</p>
       <div id="statsChartWrap" style="position:relative;height:260px;min-height:260px">
         <canvas id="statsChart" role="img" aria-label="Follower growth chart"></canvas>
@@ -250,6 +251,8 @@
               wrap.style.display = 'none';
               noData.style.display = 'block';
               noData.textContent = 'No stats yet. Data appears after a run completes (with BOT_PROFILE_USERNAME set).';
+              var currentEl = document.getElementById('statsCurrentCount');
+              if (currentEl) currentEl.style.display = 'none';
               return;
             }
             var sorted = data.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
@@ -257,6 +260,21 @@
             var followers = sorted.map(function(d) { return d.followers != null ? d.followers : null; });
             wrap.style.display = 'block';
             noData.style.display = 'none';
+            var last = sorted[sorted.length - 1];
+            var currentEl = document.getElementById('statsCurrentCount');
+            if (currentEl && last) {
+              var f = last.followers;
+              var fol = last.following;
+              if (f != null || fol != null) {
+                var parts = [];
+                if (f != null) parts.push(f.toLocaleString() + ' followers');
+                if (fol != null) parts.push(fol.toLocaleString() + ' following');
+                currentEl.textContent = 'Current: ' + parts.join(' · ');
+                currentEl.style.display = 'block';
+              } else {
+                currentEl.style.display = 'none';
+              }
+            }
             var ctx = document.getElementById('statsChart');
             if (!ctx) return;
             if (statsChartInstance) statsChartInstance.destroy();
@@ -281,6 +299,8 @@
             wrap.style.display = 'none';
             noData.style.display = 'block';
             noData.textContent = 'Could not load stats. If you just ran with BOT_PROFILE_USERNAME, wait for the run to finish and the repo to be pushed.';
+            var currentEl = document.getElementById('statsCurrentCount');
+            if (currentEl) currentEl.style.display = 'none';
           });
       }
 

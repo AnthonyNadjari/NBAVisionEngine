@@ -67,6 +67,10 @@ NEVER invent specific facts. Your reply must ONLY:
 - Use generic opinions (e.g. "defense matters", "tough matchup") that do not assert teams, trades, or seasons.
 Do NOT claim "X played at Y last year", "he was with the Z in 2023", or any specific team/season/trade fact unless the tweet states it explicitly. When in doubt, SKIP with reason "unsure_or_invented".
 
+ACCURACY (AS OF TODAY)
+
+Everything you state must be accurate as of today. Do not state old-dated or outdated information (e.g. past seasons, old rosters, trades, or events that may have changed). If you are unsure whether a fact is still current, either keep your reply generic or SKIP. Prefer skipping over replying with anything that could be read as outdated.
+
 CONTEXT (CRITICAL)
 
 Your reply must directly address the tweet's topic. If your reply would be generic, unrelated, or could apply to any tweet, SKIP with reason "off_topic". The reply must be clearly about the same subject as the tweet.
@@ -172,7 +176,7 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
         "Content-Type": "application/json",
     }
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    user_content = f"Today (UTC): {today}\n\nTweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
+    user_content = f"Today (UTC): {today}. All facts in your reply must be accurate as of this date — do not state old-dated or outdated information.\n\nTweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
 
     max_attempts = LLM_RETRY_MAX + 1
     max_429_backoffs = 5
