@@ -19,6 +19,10 @@
     {
       "time": "21:00",
       "enabled": true
+    },
+    {
+      "time": "02:00",
+      "enabled": true
     }
   ],
   "timezone": "UTC"
