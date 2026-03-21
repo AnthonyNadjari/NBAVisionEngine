@@ -2,7 +2,7 @@ name: Scheduler
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/15 * * * *'
 
 jobs:
   check:
@@ -55,7 +55,7 @@ jobs:
 
             echo "  Schedule $TIME ($SCHED_TOTAL min): diff=${DIFF} min"
 
-            if [ $DIFF -le 15 ]; then
+            if [ $DIFF -le 20 ]; then
               SHOULD_TRIGGER=true
               echo "  -> MATCH! Will trigger."
             fi
