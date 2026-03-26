@@ -21,7 +21,15 @@
       "enabled": true
     },
     {
-      "time": "02:00",
+      "time": "23:00",
+      "enabled": true
+    },
+    {
+      "time": "01:00",
+      "enabled": true
+    },
+    {
+      "time": "03:00",
       "enabled": true
     }
   ],
