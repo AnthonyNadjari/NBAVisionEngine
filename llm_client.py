@@ -7,9 +7,9 @@ import json
 import random
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 import requests
-from config import get_llm_api_key, get_llm_model, LLM_TIMEOUT_SECONDS, LLM_RETRY_MAX
+from config import get_llm_api_key, get_llm_model, LLM_TIMEOUT_SECONDS, LLM_RETRY_MAX, TZ
 
 # Template replies when no LLM key — no API, no credentials
 TEMPLATE_REPLIES = [
@@ -175,8 +175,8 @@ def call_llm(tweet_text: str, tweet_author: str = ""):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    user_content = f"Today (UTC): {today}. All facts in your reply must be accurate as of this date — do not state old-dated or outdated information.\n\nTweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
+    today = datetime.now(TZ).strftime("%Y-%m-%d")
+    user_content = f"Today (UTC+1): {today}. All facts in your reply must be accurate as of this date — do not state old-dated or outdated information.\n\nTweet:\n{tweet_text or ''}\n\nAuthor:\n{tweet_author or 'unknown'}"
 
     max_attempts = LLM_RETRY_MAX + 1
     max_429_backoffs = 5

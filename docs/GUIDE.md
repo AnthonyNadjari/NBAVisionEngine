@@ -123,9 +123,9 @@ The job gets picked up by your PC within seconds. Click on the run to see live l
 
 ### Automatic schedule
 
-The bot runs automatically at the times you set in the dashboard (default: **9:00 AM UTC** and **4:00 PM UTC**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow runs every 30 minutes and triggers the main engine when the current UTC time is within **15 minutes** of a slot (so delayed cron runs still match).
+The bot runs automatically at the times you set in the dashboard (default: **11:00 AM UTC+1** and **4:00 PM UTC+1**). You can add, remove, or toggle time slots directly from the dashboard's **Schedule** card — just edit the times and click **Save**. A lightweight scheduler workflow runs every 15 minutes and triggers the main engine when the current UTC+1 time is within **20 minutes** of a slot (so delayed cron runs still match).
 
-**Important:** All schedule times are in **UTC**. If you are in the UK, 9:00 UK = 9:00 UTC in winter (GMT) or 8:00 UTC in summer (BST). Adjust the dashboard times accordingly.
+**Important:** All schedule times are in **UTC+1**.
 
 **If scheduled runs don't fire:** (1) Check the **Actions** tab for "Scheduler" runs at :00 and :30 — do they run? Open a Scheduler run and look at the "Check schedule and trigger" step: it logs "API response HTTP status: 204" on success, or a different status (e.g. 403) and a warning if the trigger failed. (2) If you see 403 or the main workflow never triggers, go to **Settings → Actions → General → Workflow permissions** and set to **Read and write** for the default `GITHUB_TOKEN`. (3) The 15‑minute window allows for delayed cron. (4) Your PC and runner must be on at the scheduled times.
 

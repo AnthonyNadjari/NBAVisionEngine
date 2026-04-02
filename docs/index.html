@@ -160,7 +160,7 @@
     <!-- Schedule editor -->
     <section class="card" id="scheduleCard">
       <h2 class="card-title">Schedule</h2>
-      <p class="help-text" style="margin-bottom:1rem">Runs are triggered automatically at the times below (UTC). Toggle on/off, add or remove slots, then hit Save.</p>
+      <p class="help-text" style="margin-bottom:1rem">Runs are triggered automatically at the times below (UTC+1). Toggle on/off, add or remove slots, then hit Save.</p>
       <div id="scheduleSlots"></div>
       <div class="btn-row" style="margin-top:1rem">
         <button type="button" class="btn btn-secondary" id="addSlotBtn">+ Add time</button>
@@ -256,6 +256,8 @@
               return;
             }
             var sorted = data.slice().sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+            var firstDataIdx = sorted.findIndex(function(d) { return d.followers != null; });
+            if (firstDataIdx > 0) sorted = sorted.slice(firstDataIdx);
             var labels = sorted.map(function(d) { return d.date || ''; });
             var followers = sorted.map(function(d) { return d.followers != null ? d.followers : null; });
             wrap.style.display = 'block';
@@ -607,7 +609,7 @@
           div.className = 'schedule-slot';
           div.innerHTML = '<label class="schedule-toggle"><input type="checkbox" ' + (slot.enabled ? 'checked' : '') + ' data-idx="' + idx + '"><span class="slider"></span></label>' +
             '<input type="time" value="' + (slot.time || '12:00') + '" data-idx="' + idx + '">' +
-            '<span class="stat" style="flex:1">UTC</span>' +
+            '<span class="stat" style="flex:1">UTC+1</span>' +
             '<button type="button" class="schedule-remove" data-idx="' + idx + '" title="Remove">&times;</button>';
           scheduleSlots.appendChild(div);
         });
@@ -664,7 +666,7 @@
         scheduleFeedback.style.color = 'var(--text-muted)';
         if (scheduleError) scheduleError.style.display = 'none';
 
-        var payload = { schedules: currentSchedule, timezone: 'UTC' };
+        var payload = { schedules: currentSchedule, timezone: 'UTC+1' };
         var body = { message: 'Update schedule from dashboard', content: btoa(JSON.stringify(payload, null, 2) + '\n') };
         if (scheduleSha) body.sha = scheduleSha;
 

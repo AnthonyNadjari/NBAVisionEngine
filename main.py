@@ -30,8 +30,9 @@ from config import (
 
 def _write_failure_log(reason: str, run_id: str) -> None:
     """Write a minimal session log on auth failure so artifacts always exist."""
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc).isoformat()
+    from datetime import datetime
+    from config import TZ
+    now = datetime.now(TZ).isoformat()
     log_data = build_session_log(
         start_time=now,
         end_time=now,

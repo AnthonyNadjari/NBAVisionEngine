@@ -4,6 +4,7 @@ Credentials: credentials.json (or env vars).
 """
 import json
 import os
+from datetime import timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+
+TZ = timezone(timedelta(hours=1))  # UTC+1
 
 
 def _credentials_path() -> Path | None:

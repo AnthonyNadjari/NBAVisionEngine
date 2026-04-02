@@ -1,7 +1,7 @@
 # NBAVision Engine — GitHub Actions
 # Self-hosted runner (home PC) for IP consistency with cookie export.
 # Required: TWITTER_COOKIES_JSON. Optional: LLM_API_KEY, LLM_MODEL, DISCORD_WEBHOOK_URL.
-# Schedule: 9am and 4pm UK (09:00 and 16:00 UTC).
+# Schedule: times in docs/schedule.json are UTC+1.
 
 name: NBAVision Engine
 

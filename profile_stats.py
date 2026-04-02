@@ -4,12 +4,12 @@ Run at the beginning of each run; one value per day (overwritten if same day).
 """
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 from playwright.sync_api import Page
 
-from config import BOT_PROFILE_USERNAME, STATS_FILE
+from config import BOT_PROFILE_USERNAME, STATS_FILE, TZ
 
 
 def _parse_count(text: str) -> int | None:
@@ -184,7 +184,7 @@ def save_stats(entries: list[dict]) -> None:
 
 def update_today(entries: list[dict], followers: int | None, following: int | None) -> list[dict]:
     """Update or append today's entry. One value per day (last run of the day wins)."""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now(TZ).strftime("%Y-%m-%d")
     new_entry = {"date": today, "followers": followers, "following": following}
     out = [e for e in entries if isinstance(e, dict) and e.get("date") != today]
     out.append(new_entry)

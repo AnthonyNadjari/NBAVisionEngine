@@ -2,7 +2,9 @@
 NBAVision Engine — Filtrage strict des tweets (Spec Section 5).
 """
 import re
-from datetime import datetime, timezone
+from datetime import datetime
+
+from config import TZ
 
 
 def _minutes_since_post(iso_timestamp: str) -> float:
@@ -12,7 +14,7 @@ def _minutes_since_post(iso_timestamp: str) -> float:
     try:
         # Twitter uses ISO format e.g. 2025-02-27T12:00:00.000Z
         dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-        now = datetime.now(timezone.utc)
+        now = datetime.now(TZ)
         return max(0.0, (now - dt).total_seconds() / 60.0)
     except Exception:
         return 999.0

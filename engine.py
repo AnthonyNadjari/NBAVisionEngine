@@ -5,7 +5,7 @@ Batches LLM calls concurrently for speed.
 import os
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from filter_tweets import filter_tweets, minutes_since_post
 from scorer import rank_and_top
 from llm_client import call_llm
@@ -22,6 +22,7 @@ from config import (
     MAX_CONSECUTIVE_ERRORS,
     MAX_POSTING_FAILURES,
     DRY_RUN,
+    TZ,
 )
 
 # Serial LLM calls with delay to stay under Groq rate limit (avoids 429)
@@ -39,7 +40,7 @@ def _engagement_velocity(tweet: dict) -> float:
 
 
 def _event(step: str, detail: dict | None = None) -> dict:
-    at = datetime.now(timezone.utc).isoformat()
+    at = datetime.now(TZ).isoformat()
     return {"step": step, "at": at, "detail": detail or {}}
 
 
@@ -49,7 +50,7 @@ def run_session(page, context, *, browser, playwright_instance):
     Returns dict of session stats for logging.
     """
     run_id = os.environ.get("NBAVISION_RUN_ID")
-    start_time = datetime.now(timezone.utc).isoformat()
+    start_time = datetime.now(TZ).isoformat()
     seen_tweet_ids: set[str] = set()
     replied_author_count: dict[str, int] = {}
     session_replies: list[str] = []
@@ -127,7 +128,7 @@ def run_session(page, context, *, browser, playwright_instance):
             "scraped_count": len(raw),
             "accepted_count": len(accepted),
             "top_count": len(top),
-            "at": datetime.now(timezone.utc).isoformat(),
+            "at": datetime.now(TZ).isoformat(),
         })
         events.append(_event("rank_done", {"top_count": len(top)}))
         top_preview = [f"@{t.get('username')}(L{t.get('likes') or 0})" for t in top[:5]]
@@ -223,7 +224,7 @@ def run_session(page, context, *, browser, playwright_instance):
             replies_posted.append({
                 "tweet_url": tweet_url,
                 "reply_text": response,
-                "posted_at": datetime.now(timezone.utc).isoformat(),
+                "posted_at": datetime.now(TZ).isoformat(),
             })
             response_lengths.append(len(response))
             engagement_velocities.append(_engagement_velocity(tweet))
@@ -247,7 +248,7 @@ def run_session(page, context, *, browser, playwright_instance):
             print(f"[Cycle {cycle_index}] Sleeping {int(interval_sec)}s until next cycle", flush=True)
             time.sleep(interval_sec)
 
-    end_time = datetime.now(timezone.utc).isoformat()
+    end_time = datetime.now(TZ).isoformat()
     events.append(_event("session_end", {"total_replied": total_replied, "total_skipped": total_skipped}))
     avg_response_length = sum(response_lengths) / len(response_lengths) if response_lengths else 0
     avg_engagement_velocity = sum(engagement_velocities) / len(engagement_velocities) if engagement_velocities else 0

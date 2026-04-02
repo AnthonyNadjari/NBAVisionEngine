@@ -3,8 +3,10 @@ NBAVision Engine — Logging session (Spec Section 12).
 """
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+
+from config import TZ
 
 
 def ensure_logs_dir() -> Path:
@@ -14,7 +16,7 @@ def ensure_logs_dir() -> Path:
 
 
 def session_log_path() -> Path:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(TZ).strftime("%Y%m%d_%H%M%S")
     return ensure_logs_dir() / f"session_{ts}.json"
 
 
