@@ -2,39 +2,39 @@
   "schedules": [
     {
       "time": "11:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "16:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "17:15",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "19:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "21:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "23:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "01:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "03:00",
-      "enabled": true
+      "enabled": false
     },
     {
       "time": "05:00",
-      "enabled": true
+      "enabled": false
     }
   ],
   "timezone": "UTC+1"
