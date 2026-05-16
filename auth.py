@@ -232,6 +232,15 @@ def launch_and_auth() -> tuple:
     # If state.json failed, retry with raw cookies
     if use_state:
         print("Auth: state.json session failed, retrying with raw cookies...", flush=True)
+        # Stale state.json persists on the self-hosted runner and is loaded
+        # before raw cookies on every run. If it no longer authenticates
+        # (e.g. session invalidated after a country/IP change), delete it so
+        # the next run starts clean from the freshly exported cookies.
+        try:
+            STATE_FILE.unlink(missing_ok=True)
+            print(f"Auth: Removed stale {STATE_FILE.name} so next run uses fresh cookies.", flush=True)
+        except Exception as e:
+            print(f"Auth: Could not remove {STATE_FILE.name}: {e}", flush=True)
         try:
             page.close()
             context.close()
@@ -265,7 +274,12 @@ def launch_and_auth() -> tuple:
         save_session_state(context)
         return pw, browser, context, page
 
-    # Screenshot for debugging — capture what the browser actually shows
+    # Screenshot for debugging — capture what the browser actually shows.
+    # The screenshot is gitignored and only on the runner, but the page
+    # title/url is folded into the returned reason so it lands in the
+    # committed run_logs JSON and the Discord alert for remote diagnosis.
+    page_title = ""
+    page_url = ""
     try:
         ss_path = LOGS_DIR / "auth_failure.png"
         page.screenshot(path=str(ss_path), full_page=True)
@@ -276,10 +290,19 @@ def launch_and_auth() -> tuple:
     except Exception as e:
         print(f"Auth: Could not capture screenshot: {e}", flush=True)
 
-    print("Auth: Session invalid or expired.", flush=True)
+    blob = f"{page_title} {page_url}".lower()
+    if any(k in blob for k in ("login", "/i/flow", "logged out", "log in")):
+        hint = "logged_out"
+    elif any(k in blob for k in ("locked", "suspend", "verify", "challenge", "arkose", "/account/access")):
+        hint = "security_challenge"
+    else:
+        hint = "unknown"
+    reason = f"session_invalid ({hint}; page='{page_title}' url='{page_url}')"
+
+    print(f"Auth: Session invalid or expired. [{hint}]", flush=True)
     try:
         browser.close()
         pw.stop()
     except Exception:
         pass
-    return None, None, None, None, "session_invalid"
+    return None, None, None, None, reason
